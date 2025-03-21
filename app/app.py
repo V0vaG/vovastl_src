@@ -203,8 +203,11 @@ def login():
             session['user_id'] = username
             session['role'] = user['role']
 
-            # Redirect everyone (root/manager/user) to main page with role and username
-            return redirect(url_for('main', username=username, role=user['role']))
+            # Redirect based on role
+            if user['role'] == 'root':
+                return redirect(url_for('root_dashboard'))
+            else:
+                return redirect(url_for('main'))
 
         flash("Invalid username or password", "danger")
 
