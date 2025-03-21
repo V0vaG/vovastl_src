@@ -30,19 +30,39 @@ os.makedirs(STL_DIR, exist_ok=True)
 def stl_files(filename):
     return send_from_directory(STL_DIR, filename)
 
-
 def is_root_registered():
     return bool(get_root_user())
 
 def load_users():
     if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r') as file:
-            return json.load(file)
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
     return []
 
 def save_users(users):
-    with open(USERS_FILE, 'w') as file:
-        json.dump(users, file, indent=4)
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=4)
+
+def add_user(username, password, role):
+    users = load_users()
+    password_hash = generate_password_hash(password)
+    users.append({
+        "user": username,
+        "role": role,
+        "password_hash": password_hash
+    })
+    save_users(users)
+
+def remove_user(username):
+    users = load_users()
+    users = [u for u in users if u['user'] != username]
+    save_users(users)
+
+def find_user(username):
+    users = load_users()
+    return next((u for u in users if u['user'] == username), None)
+
+
 
 def get_root_user():
     users = load_users()
@@ -50,13 +70,13 @@ def get_root_user():
 
 def get_managers():
     users = load_users()
-    return users[1]["users"] if len(users) > 1 else []
+    return [u for u in users if u['role'] == 'manager']
 
-def get_users(manager_username):
-    for manager in get_managers():
-        if manager['manager_username'] == manager_username:
-            return manager['users']
-    return []
+
+def get_users(manager_username=None):
+    users = load_users()
+    return [u for u in users if u['role'] == 'user']
+
 
 def save_root_user(username, password):
     password_hash = generate_password_hash(password, method='pbkdf2:sha256')
@@ -78,13 +98,6 @@ def save_user(manager_username, username, password):
             break
     save_users(users)
 
-def remove_user(manager_username, username):
-    users = load_users()
-    for manager in users[1]["users"]:
-        if manager['manager_username'] == manager_username:
-            manager["users"] = [user for user in manager.get("users", []) if user["user"] != username]
-            break
-    save_users(users)
 
 @app.route('/')
 def index():
@@ -110,56 +123,43 @@ def check_root_user():
 
 @app.route('/register/<role>', methods=['GET', 'POST'])
 def register(role):
-    if role == "root" and is_root_registered():
-        return redirect(url_for('login'))
-
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        confirm_password = request.form['confirm_password']
+        confirm = request.form['confirm_password']
 
-        if password != confirm_password:
-            flash('Passwords do not match!', 'danger')
-        else:
-            if role == "root":
-                save_root_user(username, password)
-                flash('Root user registered successfully!', 'success')
-                return redirect(url_for('login'))
-            elif role == "manager":
-                save_manager_user(username, password)
-                flash('Manager registered successfully!', 'success')
-                return redirect(url_for('root_dashboard'))
-            elif role == "user":
-                if 'user_id' not in session:
-                    return redirect(url_for('login'))
-                manager_username = session['user_id']
-                save_user(manager_username, username, password)
-                flash('User registered successfully!', 'success')
-                return redirect(url_for('manager_dashboard'))
+        if password != confirm:
+            flash("Passwords do not match", "danger")
+            return redirect(request.url)
+
+        existing = find_user(username)
+        if existing:
+            flash("User already exists", "danger")
+            return redirect(request.url)
+
+        add_user(username, password, role)
+        flash(f"{role.capitalize()} user registered successfully!", "success")
+        return redirect(url_for('login'))
 
     return render_template('register.html', role=role)
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    root_user = get_root_user()
-    manager_users = get_managers()
-    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
-        if root_user and username == root_user['root_user'] and check_password_hash(root_user['password_hash'], password):
+
+        user = find_user(username)
+        if user and check_password_hash(user['password_hash'], password):
             session['user_id'] = username
-            return redirect(url_for('root_dashboard'))
-        for manager in manager_users:
-            if username == manager['manager_username'] and check_password_hash(manager['password_hash'], password):
-                session['user_id'] = username
-                return redirect(url_for('main', role='manager', username=username))
-            for user in manager['users']:
-                if username == user['user'] and check_password_hash(user['password_hash'], password):
-                    session['user_id'] = username
-                    return redirect(url_for('main', role='user', username=username))
-        flash('Invalid username or password.', 'danger')
+            session['role'] = user['role']
+
+            # Redirect everyone (root/manager/user) to main page with role and username
+            return redirect(url_for('main', username=username, role=user['role']))
+
+        flash("Invalid username or password", "danger")
+
     return render_template('login.html')
 
 
@@ -194,13 +194,11 @@ def manager_dashboard():
         return redirect(url_for('login'))
 
     manager_username = session['user_id']
-    subfolder = request.args.get('folder', '')
     users = get_users(manager_username)
-    
-    # Folders to display in the table (current subfolder)
-    stl_folders = list_stl_folders_only(subfolder)
 
-    # Root folders for the upload dropdown
+    subfolder = request.args.get('folder', '')
+
+    stl_folders = list_stl_folders_only(subfolder)
     stl_root_folders = list_stl_root_folders()
 
     return render_template(
@@ -208,9 +206,9 @@ def manager_dashboard():
         users=users,
         username=manager_username,
         role='manager',
+        current_folder=subfolder,
         stl_folders=stl_folders,
-        stl_root_folders=stl_root_folders,
-        current_folder=subfolder
+        stl_root_folders=stl_root_folders
     )
 
 
@@ -218,9 +216,19 @@ def manager_dashboard():
 def user_dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    user_name = session['user_id']
-    users = get_users(user_name)
-    return render_template('user_dashboard.html', users=users)
+
+    username = session['user_id']
+
+    try:
+        stl_folders = [
+            f for f in os.listdir(STL_DIR)
+            if os.path.isdir(os.path.join(STL_DIR, f))
+        ]
+    except FileNotFoundError:
+        stl_folders = []
+
+    return render_template('user_dashboard.html', username=username, role='user', stl_folders=stl_folders)
+
 
 @app.route('/logout')
 def logout():
@@ -254,6 +262,7 @@ def list_stl_root_folders():
         ]
     except FileNotFoundError:
         return []
+
 
 
 @app.route('/upload_stl', methods=['POST'])
@@ -367,7 +376,6 @@ def view_folder(folder_name):
         current_folder=folder_name,
         folders=folders_with_data
     )
-
 
 
 @app.route('/download_folder/<path:folder_path>')
