@@ -141,13 +141,24 @@ def login():
         for manager in manager_users:
             if username == manager['manager_username'] and check_password_hash(manager['password_hash'], password):
                 session['user_id'] = username
-                return redirect(url_for('manager_dashboard'))
+                return redirect(url_for('main', role='manager', username=username))
             for user in manager['users']:
                 if username == user['user'] and check_password_hash(user['password_hash'], password):
                     session['user_id'] = username
-                    return redirect(url_for('user_dashboard'))
+                    return redirect(url_for('main', role='user', username=username))
         flash('Invalid username or password.', 'danger')
     return render_template('login.html')
+
+
+@app.route('/main')
+def main():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    username = request.args.get('username')
+    role = request.args.get('role')
+    return render_template('main.html', username=username, role=role)
+
+
 
 @app.route('/root_dashboard')
 def root_dashboard():

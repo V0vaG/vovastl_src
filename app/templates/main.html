@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Main Page</title>
+</head>
+<body>
+    <h1>Hello {{ role }} {{ username }}</h1>
+
+    {% if role == "manager" %}
+        <form action="{{ url_for('manager_dashboard') }}">
+            <button type="submit">Manager Dashboard</button>
+        </form>
+    {% endif %}
+
+    <form action="{{ url_for('logout') }}">
+        <button type="submit">Logout</button>
+    </form>
+</body>
+</html>
