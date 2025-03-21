@@ -196,48 +196,34 @@
             document.getElementById('notificationPopup').classList.remove('show');
         }
     </script>
+    <script>
+        function toggleUploadCheckbox(username, checked) {
+            fetch("{{ url_for('toggle_upload') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ session.get('_csrf_token') or '' }}"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    upload: checked ? "true" : "false"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    showPopup("Upload access updated!", false);
+                } else {
+                    showPopup("Failed to update.", true);
+                }
+            });
+        }
+        </script>
+        
 </head>
 <body>
     <div class="container">
         <h2>Welcome, Manager</h2>
-
-
-        <h3>Folders in STL Directory: /{{ current_folder }}</h3>
-        <table>
-            <tr>
-                <th>Folder Name</th>
-            </tr>
-            {% for folder in stl_folders %}
-            <tr>
-                <td>{{ folder.name }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <h3>Upload STL File</h3>
-        <form action="{{ url_for('upload_stl') }}" method="POST" enctype="multipart/form-data">
-            <select name="folder" required style="width: 80%; padding: 10px; font-size: 1rem; border-radius: 8px;">
-                <option value="" disabled selected>Select a folder</option>
-                {% for folder in stl_root_folders %}
-                <option value="{{ folder }}">{{ folder }}</option>
-                {% endfor %}
-            </select>
-
-            <input type="file" name="file" accept=".zip" required
-       style="margin-top: 10px; width: 80%; padding: 10px; font-size: 1rem; border-radius: 8px;">
-
-            <button type="submit" class="button" style="margin-top: 10px;">📤 Upload</button>
-        </form>
-
-        <h3>Create New Folder</h3>
-        <form action="{{ url_for('create_stl_folder') }}" method="POST">
-            <input type="text" name="folder_name" placeholder="Enter new folder name" required
-                style="width: 80%; padding: 10px; font-size: 1rem; border-radius: 8px;">
-            <button type="submit" class="button" style="margin-top: 10px;">📁 Create Folder</button>
-        </form>
-
-
-        
 
         <!-- Button Container -->
         <div class="button-container">
@@ -245,27 +231,42 @@
         </div>
 
         <h3>Users List</h3>
-        <table>
-            <tr>
-                <th>Username</th>
-            </tr>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.user }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <h3>Remove a User</h3>
-        <form action="{{ url_for('remove_user_route') }}" method="post">
-            <label for="username">Select a user to remove:</label>
-            <select name="username" id="username" required>
+        <form action="{{ url_for('update_user_upload') }}" method="POST">
+            <table>
+                <tr>
+                    <th>Username</th>
+                    <th>Upload Access</th>
+                    <th>Delete</th>
+                </tr>
                 {% for user in users %}
-                <option value="{{ user.user }}">{{ user.user }}</option>
+                <tr>
+                    <td>{{ user.user }}</td>
+                    <td>
+                        <input type="checkbox"
+       onchange="toggleUploadCheckbox('{{ user.user }}', this.checked)"
+       {% if user.upload == "true" %}checked{% endif %}>
+
+                    </td>
+                    <td>
+                        {% if user.role == 'user' %}
+                        <form action="{{ url_for('remove_user_route') }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="username" value="{{ user.user }}">
+                            <button type="submit" class="button" style="background-color: #dc3545;">🗑 Delete</button>
+                        </form>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </select>
-            <button type="submit" class="button">🗑 Remove</button>
+            </table>
+        
+            <button type="submit" class="button">💾 Save Upload Settings</button>
         </form>
+        
+
+
+
 
         <!-- Logout Button -->
         <div class="button-container">

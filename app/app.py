@@ -46,11 +46,14 @@ def save_users(users):
 def add_user(username, password, role):
     users = load_users()
     password_hash = generate_password_hash(password)
-    users.append({
+    user_entry = {
         "user": username,
         "role": role,
         "password_hash": password_hash
-    })
+    }
+    if role == "user":
+        user_entry["upload"] = "true"
+    users.append(user_entry)
     save_users(users)
 
 def remove_user(username):
@@ -62,6 +65,29 @@ def find_user(username):
     users = load_users()
     return next((u for u in users if u['user'] == username), None)
 
+@app.route('/update_user_upload', methods=['POST'])
+def update_user_upload():
+    if 'user_id' not in session or session['role'] != 'manager':
+        return redirect(url_for('login'))
+
+    users = load_users()
+    updated = False
+
+    for user in users:
+        if user['role'] == 'user':
+            key = f"upload_{user['user']}"
+            new_value = "true" if key in request.form else "false"
+            if user.get("upload") != new_value:
+                user["upload"] = new_value
+                updated = True
+
+    if updated:
+        save_users(users)
+        flash("Upload settings updated successfully!", "success")
+    else:
+        flash("No changes made.", "info")
+
+    return redirect(url_for('manager_dashboard'))
 
 
 def get_root_user():
@@ -98,6 +124,27 @@ def save_user(manager_username, username, password):
             break
     save_users(users)
 
+@app.route('/toggle_upload', methods=['POST'])
+def toggle_upload():
+    if 'user_id' not in session or session['role'] != 'manager':
+        return jsonify({"status": "unauthorized"}), 403
+
+    data = request.get_json()
+    username = data.get('username')
+    new_value = data.get('upload')
+
+    if not username or new_value not in ['true', 'false']:
+        return jsonify({"status": "invalid input"}), 400
+
+    users = load_users()
+    for user in users:
+        if user['user'] == username and user['role'] == 'user':
+            user['upload'] = new_value
+            save_users(users)
+            return jsonify({"status": "ok"})
+
+    return jsonify({"status": "not found"}), 404
+
 
 @app.route('/')
 def index():
@@ -111,9 +158,10 @@ def remove_user_route():
         return redirect(url_for('login'))
     manager_username = session['user_id']
     username = request.form['username']
-    remove_user(manager_username, username)
+    remove_user(username)
     flash('User removed successfully!', 'success')
     return redirect(url_for('manager_dashboard'))
+
 
 @app.before_request
 def check_root_user():
@@ -168,8 +216,11 @@ def main():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    username = request.args.get('username')
-    role = request.args.get('role')
+    username = session['user_id']
+    role = session.get('role', '')
+
+    user_data = find_user(username)
+    upload_enabled = user_data.get("upload") == "true" if user_data and role == "user" else True
 
     try:
         stl_folders = [
@@ -179,7 +230,15 @@ def main():
     except FileNotFoundError:
         stl_folders = []
 
-    return render_template('main.html', username=username, role=role, stl_folders=stl_folders)
+    return render_template(
+        'main.html',
+        username=username,
+        role=role,
+        stl_folders=stl_folders,
+        upload_enabled=upload_enabled
+    )
+
+
 
 @app.route('/root_dashboard')
 def root_dashboard():
@@ -270,19 +329,22 @@ def upload_stl():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    folder = request.form.get('folder')
+    selected_folder = request.form.get('folder')
+    new_folder = request.form.get('new_folder', '').strip()
     file = request.files.get('file')
 
+    # Determine which folder to use
+    folder = secure_filename(new_folder) if new_folder else selected_folder
+
     if not file or not folder:
-        flash('Please select a folder and choose a file.', 'danger')
-        return redirect(url_for('manager_dashboard'))
+        flash('Please select or enter a folder and choose a file.', 'danger')
+        return redirect(url_for('upload_page'))
 
     filename = secure_filename(file.filename)
     if not filename.lower().endswith('.zip'):
         flash('Upload only ZIP files.', 'danger')
-        return redirect(url_for('manager_dashboard'))
+        return redirect(url_for('upload_page'))
 
-    # Define target paths
     upload_path = os.path.join(STL_DIR, folder)
     os.makedirs(upload_path, exist_ok=True)
 
@@ -297,12 +359,12 @@ def upload_stl():
             os.makedirs(extract_path, exist_ok=True)
             zip_ref.extractall(extract_path)
         os.remove(zip_path)
-        flash(f'"{filename}" uploaded and extracted to folder "{extract_folder_name}".', 'success')
+        flash(f'"{filename}" uploaded and extracted to folder "{folder}/{extract_folder_name}".', 'success')
     except zipfile.BadZipFile:
         os.remove(zip_path)
         flash('Invalid ZIP file. Upload failed.', 'danger')
 
-    return redirect(url_for('manager_dashboard'))
+    return redirect(url_for('main', username=session['user_id'], role=session['role']))
 
 
 @app.route('/create_stl_folder', methods=['POST'])
@@ -314,9 +376,8 @@ def create_stl_folder():
 
     if not folder_name:
         flash("Folder name cannot be empty.", "danger")
-        return redirect(url_for('manager_dashboard'))
+        return redirect(request.referrer or url_for('main'))
 
-    # Sanitize folder name to avoid path traversal
     safe_name = secure_filename(folder_name)
     new_folder_path = os.path.join(STL_DIR, safe_name)
 
@@ -328,7 +389,7 @@ def create_stl_folder():
     except Exception as e:
         flash(f'Error creating folder: {e}', "danger")
 
-    return redirect(url_for('manager_dashboard'))
+    return redirect(request.referrer or url_for('main'))
 
 @app.route('/folder/<path:folder_name>')
 def view_folder(folder_name):
@@ -406,6 +467,21 @@ def download_folder(folder_path):
     except Exception as e:
         flash(f"Error creating zip: {e}", "danger")
         return redirect(url_for('main'))
+
+@app.route('/upload')
+def upload_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    stl_root_folders = list_stl_root_folders()
+
+    return render_template(
+        'upload.html',
+        username=session['user_id'],
+        role=session['role'],
+        stl_root_folders=stl_root_folders
+    )
+
 
 
 if __name__ == '__main__':
