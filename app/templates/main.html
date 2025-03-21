@@ -8,11 +8,32 @@
     <h1>Hello {{ role }} {{ username }}</h1>
 
     {% if role == "manager" %}
-        <form action="{{ url_for('manager_dashboard') }}">
-            <button type="submit">Manager Dashboard</button>
-        </form>
+    <form action="{{ url_for('manager_dashboard') }}">
+        <button type="submit">Manager Dashboard</button>
+    </form>
     {% endif %}
 
+
+
+    <h2>STL Folders</h2>
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Folder Name</th>
+        </tr>
+        {% for folder in stl_folders %}
+        <tr>
+            <td><a href="{{ url_for('view_folder', folder_name=folder) }}">{{ folder }}</a></td>
+        </tr>
+        {% endfor %}
+        {% if upload_enabled %}
+            <form action="{{ url_for('upload_page') }}">
+                <button type="submit">📤 Upload</button>
+            </form>
+        {% endif %}
+        
+
+        
+    </table>
     <form action="{{ url_for('logout') }}">
         <button type="submit">Logout</button>
     </form>

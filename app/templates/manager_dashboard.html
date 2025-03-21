@@ -196,6 +196,30 @@
             document.getElementById('notificationPopup').classList.remove('show');
         }
     </script>
+    <script>
+        function toggleUploadCheckbox(username, checked) {
+            fetch("{{ url_for('toggle_upload') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ session.get('_csrf_token') or '' }}"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    upload: checked ? "true" : "false"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    showPopup("Upload access updated!", false);
+                } else {
+                    showPopup("Failed to update.", true);
+                }
+            });
+        }
+        </script>
+        
 </head>
 <body>
     <div class="container">
@@ -207,33 +231,54 @@
         </div>
 
         <h3>Users List</h3>
-        <table>
-            <tr>
-                <th>Username</th>
-            </tr>
-            {% for user in users %}
-            <tr>
-                <td>{{ user.user }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <h3>Remove a User</h3>
-        <form action="{{ url_for('remove_user_route') }}" method="post">
-            <label for="username">Select a user to remove:</label>
-            <select name="username" id="username" required>
+        <form action="{{ url_for('update_user_upload') }}" method="POST">
+            <table>
+                <tr>
+                    <th>Username</th>
+                    <th>Upload Access</th>
+                    <th>Delete</th>
+                </tr>
                 {% for user in users %}
-                <option value="{{ user.user }}">{{ user.user }}</option>
+                <tr>
+                    <td>{{ user.user }}</td>
+                    <td>
+                        <input type="checkbox"
+       onchange="toggleUploadCheckbox('{{ user.user }}', this.checked)"
+       {% if user.upload == "true" %}checked{% endif %}>
+
+                    </td>
+                    <td>
+                        {% if user.role == 'user' %}
+                        <form action="{{ url_for('remove_user_route') }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="username" value="{{ user.user }}">
+                            <button type="submit" class="button" style="background-color: #dc3545;">🗑 Delete</button>
+                        </form>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </select>
-            <button type="submit" class="button">🗑 Remove</button>
+            </table>
+        
+            <button type="submit" class="button">💾 Save Upload Settings</button>
         </form>
+        
+
+
+
 
         <!-- Logout Button -->
         <div class="button-container">
             <a href="{{ url_for('logout') }}" class="button logout-button">🚪 Logout</a>
+            <!-- Add this line just under the h2 Welcome line -->
+            <a href="{{ url_for('main') }}?username={{ username }}&role=manager" class="button" style="background-color: #6c757d;">🔙 Back to Main</a>
+
         </div>
     </div>
+
+
+
 
     <!-- Popup Notification -->
     <div id="notificationPopup" class="popup">
