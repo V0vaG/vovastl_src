@@ -155,17 +155,18 @@
 
         <a href="{{ url_for('register', role='manager') }}" class="button">Add Manager User</a>
 
-        <h3>Manager Users</h3>
-        <table>
-            <tr>
-                <th>Username</th>
-            </tr>
+        <h2>Managers</h2>
+        {% if managers %}
+          <ul>
             {% for manager in managers %}
-            <tr>
-                <td>{{ manager.manager_username }}</td>
-            </tr>
+              <li>{{ manager.user }}</li>
             {% endfor %}
-        </table>
+          </ul>
+        {% else %}
+          <p>No managers found.</p>
+        {% endif %}
+        
+        
 
         <a href="{{ url_for('logout') }}" class="button">Logout</a>
     </div>
