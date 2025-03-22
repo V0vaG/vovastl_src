@@ -331,6 +331,8 @@ def list_stl_root_folders():
 
 
 
+
+
 @app.route('/upload_stl', methods=['POST'])
 def upload_stl():
     if 'user_id' not in session:
@@ -340,7 +342,6 @@ def upload_stl():
     new_folder = request.form.get('new_folder', '').strip()
     file = request.files.get('file')
 
-    # Determine which folder to use
     folder = secure_filename(new_folder) if new_folder else selected_folder
 
     if not file or not folder:
@@ -366,10 +367,10 @@ def upload_stl():
             os.makedirs(extract_path, exist_ok=True)
             zip_ref.extractall(extract_path)
 
-        # Create .inf file with uploader info
+        # Save .inf file inside the extracted folder
         uploader = session['user_id']
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        info_path = os.path.join(upload_path, f"{extract_folder_name}.inf")
+        info_path = os.path.join(extract_path, f"{extract_folder_name}.inf")
         with open(info_path, 'w', encoding='utf-8') as f:
             f.write(f"Uploader: {uploader}\n")
             f.write(f"Uploaded: {now}\n")
@@ -417,6 +418,8 @@ def view_folder(folder_name):
 
     folders_with_data = []
 
+    username = session.get('user_id', '')
+
     try:
         subfolders = [
             f for f in os.listdir(folder_path)
@@ -454,18 +457,26 @@ def view_folder(folder_name):
                 with open(readme_path, 'r', encoding='utf-8') as f:
                     description = f.read().strip()
 
-            # Read <sub>.inf file in parent folder
-            inf_path = os.path.join(folder_path, f"{sub}.inf")
+            # Read <sub>.inf file inside the subfolder
+            inf_path = os.path.join(subfolder_path, f"{sub}.inf")
             upload_info = ""
+            can_delete = False
             if os.path.isfile(inf_path):
                 with open(inf_path, 'r', encoding='utf-8') as f:
                     upload_info = f.read().strip()
+                    # Check if current user is the uploader
+                    for line in upload_info.splitlines():
+                        if line.startswith("Uploader:"):
+                            uploader = line.split(":", 1)[1].strip()
+                            if uploader == username:
+                                can_delete = True
 
             folders_with_data.append({
                 'name': sub,
                 'image': image_url,
                 'description': description,
-                'upload_info': upload_info
+                'upload_info': upload_info,
+                'can_delete': can_delete
             })
 
     except FileNotFoundError:
@@ -520,6 +531,41 @@ def upload_page():
         stl_root_folders=stl_root_folders
     )
 
+@app.route('/delete_folder', methods=['POST'])
+def delete_folder():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    folder = request.form.get('folder')
+    subfolder = request.form.get('subfolder')
+
+    full_path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
+    inf_file = os.path.normpath(os.path.join(STL_DIR, folder, f"{subfolder}.inf"))
+
+    # Confirm the deletion is within the allowed directory
+    if not full_path.startswith(os.path.join(STL_DIR, folder)):
+        flash("Invalid folder path.", "danger")
+        return redirect(url_for('view_folder', folder_name=folder))
+
+    # Check if the user is allowed to delete
+    if os.path.exists(inf_file):
+        with open(inf_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith("Uploader:"):
+                    uploader = line.split(":", 1)[1].strip()
+                    if uploader != session['user_id']:
+                        flash("You can only delete folders you uploaded.", "danger")
+                        return redirect(url_for('view_folder', folder_name=folder))
+
+    try:
+        shutil.rmtree(full_path)
+        if os.path.exists(inf_file):
+            os.remove(inf_file)
+        flash(f'Folder "{subfolder}" deleted successfully.', "success")
+    except Exception as e:
+        flash(f"Error deleting folder: {e}", "danger")
+
+    return redirect(url_for('view_folder', folder_name=folder))
 
 
 if __name__ == '__main__':
