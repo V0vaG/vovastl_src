@@ -35,13 +35,17 @@ def is_root_registered():
     return bool(get_root_user())
 
 def load_users():
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, 'r') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return []
-    return []
+    if not os.path.exists(USERS_FILE):
+        # Create an empty list of users
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump([], f, indent=4)
+        return []
+
+    try:
+        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        return []
 
 def save_users(users):
     with open(USERS_FILE, 'w') as f:
