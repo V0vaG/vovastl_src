@@ -3,39 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <title>Main Page</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 40px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #eef2f7;
+        }
+
+        a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        .btn-blue {
+            background-color: #007bff;
+        }
+
+        .btn-blue:hover {
+            background-color: #0056b3;
+        }
+
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello {{ role }} {{ username }}</h1>
+    <div class="container">
+        <h1>Welcome {{ role|capitalize }} {{ username }}</h1>
 
-    {% if role == "manager" %}
-    <form action="{{ url_for('manager_dashboard') }}">
-        <button type="submit">Manager Dashboard</button>
-    </form>
-    {% endif %}
-
-
-
-    <h2>STL Folders</h2>
-    <table border="1" cellpadding="8">
-        <tr>
-            <th>Folder Name</th>
-        </tr>
-        {% for folder in stl_folders %}
-        <tr>
-            <td><a href="{{ url_for('view_folder', folder_name=folder) }}">{{ folder }}</a></td>
-        </tr>
-        {% endfor %}
-        {% if upload_enabled %}
-            <form action="{{ url_for('upload_page') }}">
-                <button type="submit">📤 Upload</button>
+        {% if role == "manager" %}
+        <div class="actions">
+            <form action="{{ url_for('manager_dashboard') }}" style="display:inline;">
+                <button type="submit" class="btn btn-blue">📋 Manager Dashboard</button>
             </form>
+        </div>
         {% endif %}
-        
 
-        
-    </table>
-    <form action="{{ url_for('logout') }}">
-        <button type="submit">Logout</button>
-    </form>
+        <h2>📁 STL Folders</h2>
+        <table>
+            <tr>
+                <th>Folder Name</th>
+            </tr>
+            {% for folder in stl_folders %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('view_folder', folder_name=folder) }}">{{ folder }}</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div class="actions">
+            {% if upload_enabled %}
+            <form action="{{ url_for('upload_page') }}" style="display:inline;">
+                <button type="submit" class="btn">📤 Upload</button>
+            </form>
+            {% endif %}
+
+            <form action="{{ url_for('logout') }}" style="display:inline;">
+                <button type="submit" class="btn btn-blue">🚪 Logout</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
