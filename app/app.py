@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import shutil
 from io import BytesIO
+from datetime import datetime 
 
 
 app = Flask(__name__)
@@ -364,6 +365,15 @@ def upload_stl():
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             os.makedirs(extract_path, exist_ok=True)
             zip_ref.extractall(extract_path)
+
+        # Create .inf file with uploader info
+        uploader = session['user_id']
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        info_path = os.path.join(upload_path, f"{extract_folder_name}.inf")
+        with open(info_path, 'w', encoding='utf-8') as f:
+            f.write(f"Uploader: {uploader}\n")
+            f.write(f"Uploaded: {now}\n")
+
         os.remove(zip_path)
         flash(f'"{filename}" uploaded and extracted to folder "{folder}/{extract_folder_name}".', 'success')
     except zipfile.BadZipFile:
@@ -371,7 +381,6 @@ def upload_stl():
         flash('Invalid ZIP file. Upload failed.', 'danger')
 
     return redirect(url_for('main', username=session['user_id'], role=session['role']))
-
 
 @app.route('/create_stl_folder', methods=['POST'])
 def create_stl_folder():
@@ -416,23 +425,47 @@ def view_folder(folder_name):
 
         for sub in subfolders:
             subfolder_path = os.path.join(folder_path, sub)
-            files = os.listdir(subfolder_path)
 
-            # Find image
-            image_file = next((f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))), None)
-            image_url = url_for('stl_files', filename=os.path.join(folder_name, sub, image_file)) if image_file else None
+            image_url = None
+            # Recursively walk the subfolder tree
+            for root, dirs, files in os.walk(subfolder_path):
+                # First: look specifically for "1.*" image
+                image_file = next((
+                    f for f in files
+                    if os.path.splitext(f)[0] == "1" and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
+                ), None)
 
-            # Read README.txt
+                # Fallback: if no 1.*, look for any image
+                if not image_file:
+                    image_file = next((
+                        f for f in files
+                        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
+                    ), None)
+
+                if image_file:
+                    rel_path = os.path.relpath(os.path.join(root, image_file), STL_DIR)
+                    image_url = url_for('stl_files', filename=rel_path)
+                    break  # stop after finding the first image
+
+            # Read README.txt in the top-level subfolder only
             readme_path = os.path.join(subfolder_path, "README.txt")
             description = ""
             if os.path.isfile(readme_path):
                 with open(readme_path, 'r', encoding='utf-8') as f:
                     description = f.read().strip()
 
+            # Read <sub>.inf file in parent folder
+            inf_path = os.path.join(folder_path, f"{sub}.inf")
+            upload_info = ""
+            if os.path.isfile(inf_path):
+                with open(inf_path, 'r', encoding='utf-8') as f:
+                    upload_info = f.read().strip()
+
             folders_with_data.append({
                 'name': sub,
                 'image': image_url,
-                'description': description
+                'description': description,
+                'upload_info': upload_info
             })
 
     except FileNotFoundError:
@@ -443,7 +476,6 @@ def view_folder(folder_name):
         current_folder=folder_name,
         folders=folders_with_data
     )
-
 
 @app.route('/download_folder/<path:folder_path>')
 def download_folder(folder_path):
