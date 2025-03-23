@@ -613,7 +613,9 @@ def stl_gallery(folder, subfolder):
     return render_template('stl_gallery.html', stl_files=stls)
 
 
-
+@app.route('/stl_files/<path:filename>')
+def stl_files(filename):
+    return send_from_directory(STL_DIR, filename)
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
