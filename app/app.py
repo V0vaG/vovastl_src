@@ -596,23 +596,6 @@ def show_3d_gallery(folder, subfolder):
     return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images, stl_files=stl_files)
 
 
-@app.route('/stlviewer/<path:folder>/<subfolder>')
-def stl_gallery(folder, subfolder):
-    folder_path = os.path.join(STL_DIR, folder, subfolder)
-
-    if not os.path.isdir(folder_path):
-        flash("Invalid STL folder path", "danger")
-        return redirect(url_for('main'))
-
-    stls = []
-    for file in os.listdir(folder_path):
-        if file.lower().endswith('.stl'):
-            file_path = os.path.join(folder, subfolder, file)
-            stls.append(url_for('stl_files', filename=file_path))
-
-    return render_template('stl_gallery.html', stl_files=stls)
-
-
 @app.route('/stl_files/<path:filename>')
 def stl_files(filename):
     return send_from_directory(STL_DIR, filename)
