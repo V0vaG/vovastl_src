@@ -572,6 +572,10 @@ def delete_folder():
     return redirect(url_for('view_folder', folder_name=folder))
 
 @app.route('/show3d/<path:folder>/<subfolder>')
+
+
+@app.route('/show3d/<path:folder>/<subfolder>')
+
 def show_3d_gallery(folder, subfolder):
     subfolder_path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
 
@@ -580,16 +584,21 @@ def show_3d_gallery(folder, subfolder):
         return redirect(url_for('main'))
 
     images = []
+    stl_files = []
+
     try:
         for root, dirs, files in os.walk(subfolder_path):
             for f in sorted(files):
+                rel_path = os.path.relpath(os.path.join(root, f), STL_DIR)
                 if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                    rel_path = os.path.relpath(os.path.join(root, f), STL_DIR)
                     images.append(url_for('stl_files', filename=rel_path))
+                elif f.lower().endswith('.stl'):
+                    stl_files.append(url_for('stl_files', filename=rel_path))
     except Exception as e:
-        flash(f"Error loading images: {e}", "danger")
+        flash(f"Error loading files: {e}", "danger")
 
-    return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images)
+    return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images, stl_files=stl_files)
+
 
 
 if __name__ == '__main__':
