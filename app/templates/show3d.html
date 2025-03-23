@@ -104,10 +104,10 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        const stlFiles = {{ stl_files|tojson }};
-        const viewers = [];
-
-        function initViewer(containerId, stlUrl) {
+        const stlUrls = {{ stl_files | tojson }};
+        
+        stlUrls.forEach((url, index) => {
+            const containerId = 'viewer_' + index;
             const container = document.getElementById(containerId);
 
             const scene = new THREE.Scene();
@@ -125,13 +125,14 @@
             scene.add(light);
 
             const loader = new THREE.STLLoader();
-            loader.load(stlUrl, function (geometry) {
+            loader.load(url, function (geometry) {
                 const material = new THREE.MeshStandardMaterial({ color: 0x007bff });
                 const mesh = new THREE.Mesh(geometry, material);
                 geometry.computeBoundingBox();
                 const center = geometry.boundingBox.getCenter(new THREE.Vector3()).negate();
                 geometry.translate(center.x, center.y, center.z);
                 scene.add(mesh);
+                animate();
             });
 
             function animate() {
@@ -139,15 +140,7 @@
                 controls.update();
                 renderer.render(scene, camera);
             }
-
-            animate();
-        }
-
-        window.onload = function () {
-            stlFiles.forEach((url, idx) => {
-                initViewer(`viewer_${idx}`, url);
-            });
-        };
+        });
     </script>
 </body>
 </html>
