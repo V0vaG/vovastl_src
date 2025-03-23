@@ -595,5 +595,6 @@ def show_3d_gallery(folder, subfolder):
 
     return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images, stl_files=stl_files)
 
+
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
