@@ -572,10 +572,6 @@ def delete_folder():
     return redirect(url_for('view_folder', folder_name=folder))
 
 @app.route('/show3d/<path:folder>/<subfolder>')
-
-
-@app.route('/show3d/<path:folder>/<subfolder>')
-
 def show_3d_gallery(folder, subfolder):
     subfolder_path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
 
@@ -598,6 +594,24 @@ def show_3d_gallery(folder, subfolder):
         flash(f"Error loading files: {e}", "danger")
 
     return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images, stl_files=stl_files)
+
+
+@app.route('/stlviewer/<path:folder>/<subfolder>')
+def stl_gallery(folder, subfolder):
+    folder_path = os.path.join(STL_DIR, folder, subfolder)
+
+    if not os.path.isdir(folder_path):
+        flash("Invalid STL folder path", "danger")
+        return redirect(url_for('main'))
+
+    stls = []
+    for file in os.listdir(folder_path):
+        if file.lower().endswith('.stl'):
+            file_path = os.path.join(folder, subfolder, file)
+            stls.append(url_for('stl_files', filename=file_path))
+
+    return render_template('stl_gallery.html', stl_files=stls)
+
 
 
 
