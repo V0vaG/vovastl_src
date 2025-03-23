@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 
 # Set up paths
-alias = "v3d"
+alias = "vovastl"
 HOME_DIR = os.path.expanduser("~")
 FILES_PATH = os.path.join(HOME_DIR, "script_files", alias)
 DATA_DIR = os.path.join(FILES_PATH, "data")
