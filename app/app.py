@@ -561,7 +561,6 @@ def delete_folder():
                     if uploader != session['user_id']:
                         flash("You can only delete folders you uploaded.", "danger")
                         return redirect(url_for('view_folder', folder_name=folder))
-
     try:
         shutil.rmtree(full_path)
         if os.path.exists(inf_file):
@@ -571,6 +570,26 @@ def delete_folder():
         flash(f"Error deleting folder: {e}", "danger")
 
     return redirect(url_for('view_folder', folder_name=folder))
+
+@app.route('/show3d/<path:folder>/<subfolder>')
+def show_3d_gallery(folder, subfolder):
+    subfolder_path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
+
+    if not subfolder_path.startswith(STL_DIR):
+        flash("Invalid path.", "danger")
+        return redirect(url_for('main'))
+
+    images = []
+    try:
+        for root, dirs, files in os.walk(subfolder_path):
+            for f in sorted(files):
+                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    rel_path = os.path.relpath(os.path.join(root, f), STL_DIR)
+                    images.append(url_for('stl_files', filename=rel_path))
+    except Exception as e:
+        flash(f"Error loading images: {e}", "danger")
+
+    return render_template("show3d.html", folder=folder, subfolder=subfolder, images=images)
 
 
 if __name__ == '__main__':
