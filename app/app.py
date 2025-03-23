@@ -566,5 +566,33 @@ def delete_folder():
     return redirect(url_for('view_folder', folder_name=folder))
 
 
+@app.route('/show3d/<path:folder>/<subfolder>')
+def show_3d(folder, subfolder):
+    target_path = os.path.join(STL_DIR, folder, subfolder)
+    image_dir = os.path.join(target_path, "images")
+    file_dir = os.path.join(target_path, "files")
+
+    images = []
+    stl_files = []
+
+    if os.path.exists(image_dir):
+        for file in os.listdir(image_dir):
+            if file.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif')):
+                images.append(url_for('stl_files', filename=os.path.relpath(os.path.join(image_dir, file), STL_DIR)))
+
+    if os.path.exists(file_dir):
+        for file in os.listdir(file_dir):
+            if file.lower().endswith('.stl'):
+                stl_files.append(file)
+
+    return render_template(
+        "gallery.html",
+        folder=folder,
+        subfolder=subfolder,
+        images=images,
+        stl_files=stl_files
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)

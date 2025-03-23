@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gallery - {{ subfolder }}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h2 {
+            text-align: center;
+        }
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .gallery img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .stl-list {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .stl-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        .stl-list li {
+            margin: 5px 0;
+        }
+        a.back {
+            display: block;
+            margin-top: 30px;
+            text-align: center;
+            text-decoration: none;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Gallery: {{ folder }}/{{ subfolder }}</h2>
+
+    <div class="gallery">
+        {% for img in images %}
+            <img src="{{ img }}">
+        {% else %}
+            <p>No images found in this folder.</p>
+        {% endfor %}
+    </div>
+
+    <div class="stl-list">
+        <h3>STL Files</h3>
+        <ul>
+            {% for f in stl_files %}
+                <li>{{ f }}</li>
+            {% else %}
+                <li>No STL files found.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <a href="{{ url_for('view_folder', folder_name=folder) }}" class="back">⬅️ Back to Folder View</a>
+
+</body>
+</html>
