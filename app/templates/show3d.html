@@ -1,146 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>3D Gallery - {{ subfolder }}</title>
-    <style>
-        body {
-            background-color: #f3f4f6;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-
-        h2 {
-            text-align: center;
-        }
-
-        .gallery {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .gallery img {
-            width: 200px;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            transition: transform 0.3s;
-        }
-
-        .gallery img:hover {
-            transform: scale(1.05);
-        }
-
-        .stl-gallery {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 50px;
-        }
-
-        .stl-viewer-container {
-            width: 300px;
-        }
-
-        .stl-label {
-            text-align: center;
-            font-size: 1rem;
-            margin-bottom: 8px;
-        }
-
-        canvas {
-            width: 100% !important;
-            height: 300px !important;
-            border-radius: 10px;
-            background-color: white;
-        }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 40px;
-            font-size: 1.1em;
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>{{ subfolder }} – 3D Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+    }
+    #viewer {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .back-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #222;
+      color: #fff;
+      padding: 10px 15px;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 10;
+    }
+    .back-button:hover {
+      background: #444;
+    }
+  </style>
 </head>
 <body>
-    <h2>3D Gallery: {{ subfolder }}</h2>
 
-    {% if images %}
-    <div class="gallery">
-        {% for img in images %}
-            <img src="{{ img }}" alt="Image">
-        {% endfor %}
-    </div>
-    {% endif %}
+<a class="back-button" href="{{ url_for('view_folder', folder_name=folder) }}">⬅ Back</a>
+<div id="viewer"></div>
 
-    {% if stl_files %}
-    <div class="stl-gallery">
-        {% for stl in stl_files %}
-        <div class="stl-viewer-container">
-            <div class="stl-label">{{ stl.split('/')[-1] }}</div>
-            <div id="viewer_{{ loop.index0 }}"></div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+<!-- Three.js + STLLoader + Controls -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
 
-    <a href="{{ url_for('view_folder', folder_name=folder) }}" class="back-link">⬅️ Back to Folder View</a>
+<script>
+  const stlUrl = {{ stl_files[0] | tojson }};  // Use only the first STL file
 
-    <!-- Three.js & STLLoader -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x111111);
+  document.getElementById('viewer').appendChild(renderer.domElement);
 
-    <script>
-        const stlUrls = {{ stl_files | tojson }};
-        
-        stlUrls.forEach((url, index) => {
-            const containerId = 'viewer_' + index;
-            const container = document.getElementById(containerId);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 2.0;
 
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(60, container.clientWidth / 300, 0.1, 1000);
-            camera.position.set(0, 0, 100);
+  const light1 = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
+  scene.add(light1);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, 300);
-            container.appendChild(renderer.domElement);
+  const light2 = new THREE.DirectionalLight(0xffffff, 0.6);
+  light2.position.set(1, 1, 1);
+  scene.add(light2);
 
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
+  const loader = new THREE.STLLoader();
+  loader.load(stlUrl, geometry => {
+    const material = new THREE.MeshStandardMaterial({ color: 0x22aaff, metalness: 0.3, roughness: 0.6 });
+    const mesh = new THREE.Mesh(geometry, material);
+    geometry.computeBoundingBox();
 
-            const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-            scene.add(light);
+    const center = geometry.boundingBox.getCenter(new THREE.Vector3()).negate();
+    geometry.translate(center.x, center.y, center.z);
 
-            const loader = new THREE.STLLoader();
-            loader.load(url, function (geometry) {
-                const material = new THREE.MeshStandardMaterial({ color: 0x007bff });
-                const mesh = new THREE.Mesh(geometry, material);
-                geometry.computeBoundingBox();
-                const center = geometry.boundingBox.getCenter(new THREE.Vector3()).negate();
-                geometry.translate(center.x, center.y, center.z);
-                scene.add(mesh);
-                animate();
-            });
+    // Zoom to fit
+    const size = geometry.boundingBox.getSize(new THREE.Vector3()).length();
+    camera.position.z = size * 1.5;
 
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-        });
-    </script>
+    scene.add(mesh);
+    animate();
+  }, undefined, err => {
+    console.error("Failed to load STL:", err);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
 </body>
 </html>
