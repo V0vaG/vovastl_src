@@ -222,7 +222,6 @@ def login():
 
     return render_template('login.html', version=version)
 
-
 @app.route('/main')
 def main():
     if 'user_id' not in session:
@@ -249,8 +248,6 @@ def main():
         stl_folders=stl_folders,
         upload_enabled=upload_enabled
     )
-
-
 
 @app.route('/root_dashboard')
 def root_dashboard():
@@ -333,10 +330,6 @@ def list_stl_root_folders():
         ]
     except FileNotFoundError:
         return []
-
-
-
-
 
 @app.route('/upload_stl', methods=['POST'])
 def upload_stl():
