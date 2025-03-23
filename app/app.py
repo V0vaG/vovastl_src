@@ -13,6 +13,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
+version = os.getenv('VERSION')
 
 # Set up paths
 alias = "vovastl"
@@ -219,7 +220,7 @@ def login():
 
         flash("Invalid username or password", "danger")
 
-    return render_template('login.html')
+    return render_template('login.html', version=version)
 
 
 @app.route('/main')
