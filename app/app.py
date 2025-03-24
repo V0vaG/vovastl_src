@@ -566,5 +566,60 @@ def delete_folder():
     return redirect(url_for('view_folder', folder_name=folder))
 
 
+@app.route('/item/<folder>/<subfolder>')
+def item_detail(folder, subfolder):
+    base_path = os.path.join(STL_DIR, folder, subfolder)
+    base_path = os.path.normpath(base_path)
+
+    if not base_path.startswith(STL_DIR) or not os.path.exists(base_path):
+        flash("Invalid item path.", "danger")
+        return redirect(url_for('main'))
+
+    image_url = None
+    for root, dirs, files in os.walk(base_path):
+        image_file = next((
+            f for f in files
+            if os.path.splitext(f)[0] == "1" and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
+        ), None)
+        if not image_file:
+            image_file = next((
+                f for f in files
+                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
+            ), None)
+        if image_file:
+            rel_path = os.path.relpath(os.path.join(root, image_file), STL_DIR)
+            image_url = url_for('stl_files', filename=rel_path)
+            break
+
+    readme_path = os.path.join(base_path, "README.txt")
+    description = ""
+    if os.path.isfile(readme_path):
+        with open(readme_path, 'r', encoding='utf-8') as f:
+            description = f.read().strip()
+
+    inf_path = os.path.join(base_path, f"{subfolder}.inf")
+    upload_info = ""
+    can_delete = False
+    if os.path.isfile(inf_path):
+        with open(inf_path, 'r', encoding='utf-8') as f:
+            upload_info = f.read().strip()
+            for line in upload_info.splitlines():
+                if line.startswith("Uploader:"):
+                    uploader = line.split(":", 1)[1].strip()
+                    if session.get('user_id') == uploader:
+                        can_delete = True
+
+    return render_template(
+        'item.html',
+        folder=folder,
+        subfolder=subfolder,
+        image=image_url,
+        description=description,
+        upload_info=upload_info,
+        can_delete=can_delete
+    )
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
