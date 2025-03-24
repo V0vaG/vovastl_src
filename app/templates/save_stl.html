@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Save Description & Set Thumbnail</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            resize: vertical;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .gallery img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .gallery img:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        button, .back-btn {
+            padding: 10px 18px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        button:hover, .back-btn:hover {
+            background-color: #218838;
+        }
+
+        .back-btn {
+            background-color: #dc3545;
+        }
+
+        .main-image-container {
+            text-align: center;
+        }
+
+        .main-image-container img {
+            max-width: 300px;
+            border-radius: 10px;
+        }
+
+        .main-label {
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 1.2rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📝 Save Description & Choose Thumbnail</h2>
+
+        <form method="POST">
+            <label for="description">Description (README.txt):</label>
+            <textarea name="description" required>{{ description }}</textarea>
+            <button type="submit">💾 Save Description</button>
+        </form>
+
+        {% if main_image %}
+        <div class="main-image-container">
+            <img src="{{ main_image.url }}">
+            <div class="main-label">✔️ Main Image</div>
+        </div>
+        {% else %}
+        <h3>Select Thumbnail:</h3>
+        <div class="gallery">
+            {% for img in images %}
+                <img src="{{ img.url }}" alt="{{ img.filename }}" onclick="setMainImage('{{ img.filename }}')">
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('cancel_upload', folder=folder, subfolder=subfolder) }}">
+            <button type="submit" class="back-btn">🗑️ Cancel Upload & Delete Folder</button>
+        </form>
+    </div>
+
+    <script>
+        function setMainImage(filename) {
+            fetch('{{ url_for("set_main_image") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    folder: "{{ folder }}",
+                    subfolder: "{{ subfolder }}",
+                    filename: filename
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert("Error: " + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
