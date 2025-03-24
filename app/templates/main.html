@@ -99,13 +99,15 @@
     <div class="container">
         <h1>Welcome {{ role|capitalize }} {{ username }}</h1>
 
-        {% if role == "manager" %}
-        <div class="actions">
-            <form action="{{ url_for('manager_dashboard') }}" style="display:inline;">
-                <button type="submit" class="btn btn-blue">📋 Manager Dashboard</button>
+        <!-- Create Folder Form -->
+        <div class="upload-form">
+            <form action="{{ url_for('create_stl_folder') }}" method="POST">
+                <label for="folder_name">Create New Folder:</label>
+                <input type="text" name="folder_name" placeholder="Enter new folder name" required>
+                <button type="submit">Create Folder</button>
             </form>
         </div>
-        {% endif %}
+
 
         <h2>📁 STL Folders</h2>
         <table>
@@ -122,10 +124,17 @@
         </table>
 
         <div class="actions">
-            {% if upload_enabled %}
+            <!-- {% if upload_enabled %}
             <form action="{{ url_for('upload_page') }}" style="display:inline;">
                 <button type="submit" class="btn">📤 Upload</button>
             </form>
+            {% endif %} -->
+            {% if role == "manager" %}
+            <!-- <div class="actions"> -->
+                <form action="{{ url_for('manager_dashboard') }}" style="display:inline;">
+                    <button type="submit" class="btn btn-blue">📋 Manager Dashboard</button>
+                </form>
+            <!-- </div> -->
             {% endif %}
 
             <form action="{{ url_for('logout') }}" style="display:inline;">

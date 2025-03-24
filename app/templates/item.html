@@ -137,23 +137,24 @@
         </div>
         {% endif %}
 
-        <div class="section">
+        <div class="section" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 40px;">
             <form method="get" action="{{ url_for('download_folder', folder_path=folder ~ '/' ~ subfolder) }}">
                 <button type="submit" class="download-btn">⬇️ Download Folder</button>
             </form>
-        </div>
-
-        {% if can_delete %}
-        <div class="section">
+        
+            {% if can_delete %}
             <form method="POST" action="{{ url_for('delete_folder') }}" onsubmit="return confirm('Are you sure you want to delete this folder?');">
                 <input type="hidden" name="folder" value="{{ folder }}">
                 <input type="hidden" name="subfolder" value="{{ subfolder }}">
                 <button type="submit" class="download-btn" style="background-color: #dc3545;">🗑️ Delete Folder</button>
             </form>
+            {% endif %}
+        
+            <form method="get" action="{{ url_for('view_folder', folder_name=folder) }}">
+                <button type="submit" class="download-btn" style="background-color: #6c757d;">⬅️ Back to Folder View</button>
+            </form>
         </div>
-        {% endif %}
-
-        <a href="{{ url_for('view_folder', folder_name=folder) }}" class="back-link">⬅️ Back to Folder View</a>
+        
     </div>
 
     <!-- Modal -->
