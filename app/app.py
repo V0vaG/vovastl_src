@@ -297,7 +297,6 @@ def user_dashboard():
 
     return render_template('user_dashboard.html', username=username, role='user', stl_folders=stl_folders)
 
-
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
@@ -531,7 +530,6 @@ def upload_page():
         stl_root_folders=stl_root_folders
     )
 
-
 @app.route('/save_stl/<folder>/<subfolder>', methods=['GET', 'POST'])
 def save_stl(folder, subfolder):
     base_path = os.path.join(STL_DIR, folder, subfolder)
@@ -545,13 +543,30 @@ def save_stl(folder, subfolder):
 
     if request.method == 'POST':
         # Save the updated README content
-        new_desc = request.form.get('description', '')
+        new_desc = request.form.get('description', '').strip()
+
+        # Handle renaming the subfolder
+        new_subfolder = secure_filename(request.form.get('new_subfolder', '').strip())
+        if new_subfolder and new_subfolder != subfolder:
+            new_path = os.path.join(STL_DIR, folder, new_subfolder)
+            try:
+                os.rename(base_path, new_path)
+                flash(f"Folder renamed to {new_subfolder}.", "success")
+                # Update path variables
+                base_path = new_path
+                subfolder = new_subfolder
+                readme_path = os.path.join(base_path, "README.txt")
+            except Exception as e:
+                flash(f"Failed to rename folder: {e}", "danger")
+                return redirect(url_for('save_stl', folder=folder, subfolder=subfolder))
+
         try:
             with open(readme_path, 'w', encoding='utf-8') as f:
-                f.write(new_desc.strip())
+                f.write(new_desc)
             flash("Description saved successfully.", "success")
         except Exception as e:
             flash(f"Failed to save description: {e}", "danger")
+
         return redirect(url_for('item_detail', folder=folder, subfolder=subfolder))
 
     # Gather all image files in the subfolder
@@ -571,7 +586,6 @@ def save_stl(folder, subfolder):
                         main_image = img_data
                     else:
                         images.append(img_data)
-
 
     # Load README.txt content if available
     description = ""
@@ -605,19 +619,33 @@ def set_main_image():
     if not base_path.startswith(STL_DIR):
         return jsonify({'status': 'error', 'message': 'Invalid path'}), 400
 
-    current_path = os.path.join(base_path, filename)
-    new_path = os.path.join(base_path, f"1{ext}")
+    # Recursively search for the image
+    image_path = None
+    for root, dirs, files in os.walk(base_path):
+        for file in files:
+            if file == filename:
+                image_path = os.path.join(root, file)
+                break
+        if image_path:
+            break
+
+    if not image_path or not os.path.isfile(image_path):
+        return jsonify({'status': 'error', 'message': 'Image file not found'}), 404
 
     try:
-        # Remove any existing "1.*"
-        for f in os.listdir(base_path):
-            if os.path.splitext(f)[0] == '1' and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                os.remove(os.path.join(base_path, f))
-        os.rename(current_path, new_path)
+        # Remove existing "1.*" in base directory
+        for file in os.listdir(base_path):
+            if os.path.splitext(file)[0] == '1' and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                os.remove(os.path.join(base_path, file))
+
+        # Move the image to base folder as 1.*
+        new_main_path = os.path.join(base_path, f'1{ext}')
+        shutil.copy(image_path, new_main_path)
+
         return jsonify({'status': 'success'})
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 
 
 @app.route('/delete_folder', methods=['POST'])
@@ -655,8 +683,6 @@ def delete_folder():
         flash(f"Error deleting folder: {e}", "danger")
 
     return redirect(url_for('view_folder', folder_name=folder))
-
-
 
 @app.route('/item/<folder>/<subfolder>')
 def item_detail(folder, subfolder):

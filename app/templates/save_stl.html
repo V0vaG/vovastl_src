@@ -19,6 +19,15 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
         }
 
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
         textarea {
             width: 100%;
             height: 180px;
@@ -26,7 +35,7 @@
             font-size: 1rem;
             border-radius: 8px;
             border: 1px solid #ccc;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             resize: vertical;
         }
 
@@ -72,6 +81,7 @@
 
         .main-image-container {
             text-align: center;
+            margin-bottom: 30px;
         }
 
         .main-image-container img {
@@ -89,31 +99,39 @@
 </head>
 <body>
     <div class="container">
-        <h2>📝 Save Description & Choose Thumbnail</h2>
-
+        <!-- ... Inside .container -->
         <form method="POST">
-            <label for="description">Description (README.txt):</label>
-            <textarea name="description" required>{{ description }}</textarea>
-            <button type="submit">💾 Save Description</button>
-        </form>
+            <!-- Rename and Description Fields -->
+            <label for="new_subfolder">Rename Folder:</label>
+            <input type="text" name="new_subfolder" placeholder="New folder name" value="{{ subfolder }}">
 
-        {% if main_image %}
-        <div class="main-image-container">
-            <img src="{{ main_image.url }}">
-            <div class="main-label">✔️ Main Image</div>
-        </div>
-        {% else %}
-        <h3>Select Thumbnail:</h3>
-        <div class="gallery">
-            {% for img in images %}
-                <img src="{{ img.url }}" alt="{{ img.filename }}" onclick="setMainImage('{{ img.filename }}')">
-            {% endfor %}
-        </div>
-        {% endif %}
+            <label for="description">Description:</label>
+            <textarea name="description" rows="6">{{ description }}</textarea>
+
+            {% if main_image %}
+            <div class="main-image-container">
+                <img src="{{ main_image.url }}">
+                <div class="main-label">✔️ Main Image</div>
+            </div>
+            {% else %}
+            <h3>Select Thumbnail:</h3>
+            <div class="gallery">
+                {% for img in images %}
+                    <img src="{{ img.url }}" alt="{{ img.filename }}" onclick="setMainImage('{{ img.filename }}')">
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Save and Cancel in one row -->
+            <div style="display: flex; justify-content: flex-start; gap: 10px; margin-top: 20px;">
+                <button type="submit">💾 Save</button>
+        </form>
 
         <form method="POST" action="{{ url_for('cancel_upload', folder=folder, subfolder=subfolder) }}">
-            <button type="submit" class="back-btn">🗑️ Cancel Upload & Delete Folder</button>
+                <button type="submit" class="back-btn">🗑️ Cancel Upload & Delete Folder</button>
         </form>
+    </div>
+
     </div>
 
     <script>
