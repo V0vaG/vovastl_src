@@ -11,7 +11,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
             background: white;
             padding: 20px;
@@ -23,11 +23,24 @@
             text-align: center;
         }
 
-        img {
-            display: block;
-            margin: 20px auto;
-            max-width: 300px;
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .gallery img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
             border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .gallery img:hover {
+            transform: scale(1.03);
         }
 
         .section {
@@ -67,14 +80,47 @@
             border-radius: 8px;
             white-space: pre-wrap;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            padding-top: 60px;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.85);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            border-radius: 10px;
+        }
+
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>{{ subfolder }}</h1>
 
-        {% if image %}
-            <img src="{{ image }}" alt="Preview Image">
+        {% if images %}
+        <div class="gallery">
+            {% for image in images %}
+                <img src="{{ image }}" onclick="openModal('{{ image }}')">
+            {% endfor %}
+        </div>
         {% endif %}
 
         {% if description %}
@@ -96,7 +142,7 @@
                 <button type="submit" class="download-btn">⬇️ Download Folder</button>
             </form>
         </div>
-        <!-- Add this inside the <div class="container"> in item.html -->
+
         {% if can_delete %}
         <div class="section">
             <form method="POST" action="{{ url_for('delete_folder') }}" onsubmit="return confirm('Are you sure you want to delete this folder?');">
@@ -107,8 +153,26 @@
         </div>
         {% endif %}
 
-
         <a href="{{ url_for('view_folder', folder_name=folder) }}" class="back-link">⬅️ Back to Folder View</a>
     </div>
+
+    <!-- Modal -->
+    <div id="imgModal" class="modal" onclick="closeModal()">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        function openModal(imageSrc) {
+            const modal = document.getElementById("imgModal");
+            const modalImg = document.getElementById("modalImage");
+            modal.style.display = "block";
+            modalImg.src = imageSrc;
+        }
+
+        function closeModal() {
+            document.getElementById("imgModal").style.display = "none";
+        }
+    </script>
 </body>
 </html>

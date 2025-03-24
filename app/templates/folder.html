@@ -79,36 +79,6 @@
         .back-link:hover {
             text-decoration: underline;
         }
-
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 10;
-            padding-top: 60px;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.85);
-        }
-
-        .modal-content {
-            margin: auto;
-            display: block;
-            max-width: 90%;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
-        }
-
-        .close {
-            position: absolute;
-            top: 20px;
-            right: 40px;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -118,7 +88,7 @@
         {% for folder in folders %}
         <div class="card" onclick="window.location='{{ url_for('item_detail', folder=current_folder, subfolder=folder.name) }}'">
             {% if folder.image %}
-                <img src="{{ folder.image }}" class="thumb" onclick="event.stopPropagation(); openModal('{{ folder.image }}')">
+                <img src="{{ folder.image }}" class="thumb">
             {% else %}
                 <div class="no-image">No Image</div>
             {% endif %}
@@ -128,24 +98,5 @@
     </div>
 
     <a href="{{ url_for('main', username=session['user_id'], role='manager') }}" class="back-link">⬅️ Back to Main</a>
-
-    <!-- Modal HTML -->
-    <div id="imgModal" class="modal" onclick="closeModal()">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <img class="modal-content" id="modalImage">
-    </div>
-
-    <script>
-        function openModal(imageSrc) {
-            const modal = document.getElementById("imgModal");
-            const modalImg = document.getElementById("modalImage");
-            modal.style.display = "block";
-            modalImg.src = imageSrc;
-        }
-
-        function closeModal() {
-            document.getElementById("imgModal").style.display = "none";
-        }
-    </script>
 </body>
 </html>

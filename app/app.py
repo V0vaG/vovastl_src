@@ -575,21 +575,13 @@ def item_detail(folder, subfolder):
         flash("Invalid item path.", "danger")
         return redirect(url_for('main'))
 
-    image_url = None
+    # Gather all image files
+    image_urls = []
     for root, dirs, files in os.walk(base_path):
-        image_file = next((
-            f for f in files
-            if os.path.splitext(f)[0] == "1" and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
-        ), None)
-        if not image_file:
-            image_file = next((
-                f for f in files
-                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))
-            ), None)
-        if image_file:
-            rel_path = os.path.relpath(os.path.join(root, image_file), STL_DIR)
-            image_url = url_for('stl_files', filename=rel_path)
-            break
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                rel_path = os.path.relpath(os.path.join(root, file), STL_DIR)
+                image_urls.append(url_for('stl_files', filename=rel_path))
 
     readme_path = os.path.join(base_path, "README.txt")
     description = ""
@@ -613,7 +605,7 @@ def item_detail(folder, subfolder):
         'item.html',
         folder=folder,
         subfolder=subfolder,
-        image=image_url,
+        images=image_urls,
         description=description,
         upload_info=upload_info,
         can_delete=can_delete
