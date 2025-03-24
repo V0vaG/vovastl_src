@@ -379,7 +379,8 @@ def upload_stl():
         os.remove(zip_path)
         flash('Invalid ZIP file. Upload failed.', 'danger')
 
-    return redirect(url_for('main', username=session['user_id'], role=session['role']))
+    return redirect(url_for('save_stl', folder=folder, subfolder=extract_folder_name))
+
 
 @app.route('/create_stl_folder', methods=['POST'])
 def create_stl_folder():
@@ -529,6 +530,86 @@ def upload_page():
         stl_root_folders=stl_root_folders
     )
 
+
+@app.route('/save_stl/<folder>/<subfolder>', methods=['GET', 'POST'])
+def save_stl(folder, subfolder):
+    base_path = os.path.join(STL_DIR, folder, subfolder)
+    base_path = os.path.normpath(base_path)
+
+    if not base_path.startswith(STL_DIR):
+        flash("Invalid path.", "danger")
+        return redirect(url_for('main'))
+
+    readme_path = os.path.join(base_path, "README.txt")
+
+    if request.method == 'POST':
+        # Save the updated README content
+        new_desc = request.form.get('description', '')
+        try:
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(new_desc.strip())
+            flash("Description saved successfully.", "success")
+        except Exception as e:
+            flash(f"Failed to save description: {e}", "danger")
+        return redirect(url_for('item_detail', folder=folder, subfolder=subfolder))
+
+    # Gather all image files in the subfolder
+    images = []
+    if os.path.isdir(base_path):
+        for file in os.listdir(base_path):
+            file_path = os.path.join(base_path, file)
+            if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                images.append({
+                    'filename': file,
+                    'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
+                })
+
+    # Load README.txt content if available
+    description = ""
+    if os.path.isfile(readme_path):
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                description = f.read().strip()
+        except Exception as e:
+            flash(f"Failed to load description: {e}", "warning")
+
+    return render_template(
+        'save_stl.html',
+        folder=folder,
+        subfolder=subfolder,
+        description=description,
+        images=images
+    )
+
+
+@app.route('/set_main_image', methods=['POST'])
+def set_main_image():
+    data = request.json
+    folder = data.get('folder')
+    subfolder = data.get('subfolder')
+    filename = data.get('filename')
+
+    ext = os.path.splitext(filename)[1].lower()
+    base_path = os.path.join(STL_DIR, folder, subfolder)
+
+    if not base_path.startswith(STL_DIR):
+        return jsonify({'status': 'error', 'message': 'Invalid path'}), 400
+
+    current_path = os.path.join(base_path, filename)
+    new_path = os.path.join(base_path, f"1{ext}")
+
+    try:
+        # Remove any existing "1.*"
+        for f in os.listdir(base_path):
+            if os.path.splitext(f)[0] == '1' and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                os.remove(os.path.join(base_path, f))
+        os.rename(current_path, new_path)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
 @app.route('/delete_folder', methods=['POST'])
 def delete_folder():
     if 'user_id' not in session:
@@ -564,6 +645,7 @@ def delete_folder():
         flash(f"Error deleting folder: {e}", "danger")
 
     return redirect(url_for('view_folder', folder_name=folder))
+
 
 
 @app.route('/item/<folder>/<subfolder>')
