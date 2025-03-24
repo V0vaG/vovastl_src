@@ -555,14 +555,21 @@ def save_stl(folder, subfolder):
 
     # Gather all image files in the subfolder
     images = []
+    main_image = None
     if os.path.isdir(base_path):
         for file in os.listdir(base_path):
             file_path = os.path.join(base_path, file)
             if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                images.append({
-                    'filename': file,
-                    'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
-                })
+                if os.path.splitext(file)[0] == '1':
+                    main_image = {
+                        'filename': file,
+                        'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
+                    }
+                else:
+                    images.append({
+                        'filename': file,
+                        'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
+                    })
 
     # Load README.txt content if available
     description = ""
@@ -578,7 +585,8 @@ def save_stl(folder, subfolder):
         folder=folder,
         subfolder=subfolder,
         description=description,
-        images=images
+        images=images,
+        main_image=main_image
     )
 
 
@@ -693,6 +701,13 @@ def item_detail(folder, subfolder):
         can_delete=can_delete
     )
 
+@app.route('/cancel_upload/<folder>/<subfolder>', methods=['POST'])
+def cancel_upload(folder, subfolder):
+    path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
+    if path.startswith(STL_DIR) and os.path.isdir(path):
+        shutil.rmtree(path)
+        flash(f"Upload canceled and folder '{subfolder}' deleted.", "info")
+    return redirect(url_for('main'))
 
 
 if __name__ == '__main__':

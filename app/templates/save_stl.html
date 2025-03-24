@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Edit Description</title>
+    <title>Save Description & Set Thumbnail</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,7 +51,7 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
 
-        button {
+        button, .back-btn {
             padding: 10px 18px;
             background-color: #28a745;
             color: white;
@@ -59,44 +59,61 @@
             border-radius: 6px;
             font-size: 1rem;
             cursor: pointer;
+            margin-top: 15px;
         }
 
-        button:hover {
+        button:hover, .back-btn:hover {
             background-color: #218838;
         }
 
-        .back-link {
-            display: block;
-            margin-top: 30px;
-            text-align: center;
-            color: #007bff;
-            text-decoration: none;
+        .back-btn {
+            background-color: #dc3545;
         }
 
-        .back-link:hover {
-            text-decoration: underline;
+        .main-image-container {
+            text-align: center;
+        }
+
+        .main-image-container img {
+            max-width: 300px;
+            border-radius: 10px;
+        }
+
+        .main-label {
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 1.2rem;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📝 Edit Description & Choose Thumbnail</h2>
+        <h2>📝 Save Description & Choose Thumbnail</h2>
 
         <form method="POST">
             <label for="description">Description (README.txt):</label>
             <textarea name="description" required>{{ description }}</textarea>
             <button type="submit">💾 Save Description</button>
         </form>
-        
 
+        {% if main_image %}
+        <div class="main-image-container">
+            <img src="{{ main_image.url }}">
+            <div class="main-label">✔️ Main Image</div>
+        </div>
+        {% else %}
         <h3>Select Thumbnail:</h3>
         <div class="gallery">
             {% for img in images %}
                 <img src="{{ img.url }}" alt="{{ img.filename }}" onclick="setMainImage('{{ img.filename }}')">
             {% endfor %}
         </div>
+        {% endif %}
 
-        <a href="{{ url_for('item_detail', folder=folder, subfolder=subfolder) }}" class="back-link">➡️ Continue to Item Page</a>
+        <form method="POST" action="{{ url_for('cancel_upload', folder=folder, subfolder=subfolder) }}">
+            <button type="submit" class="back-btn">🗑️ Cancel Upload & Delete Folder</button>
+        </form>
     </div>
 
     <script>
@@ -115,7 +132,6 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
-                    alert("Thumbnail set successfully!");
                     location.reload();
                 } else {
                     alert("Error: " + data.message);
