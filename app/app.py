@@ -355,7 +355,8 @@ def upload_stl():
     os.makedirs(upload_path, exist_ok=True)
 
     zip_path = os.path.join(upload_path, filename)
-    extract_folder_name = os.path.splitext(filename)[0]
+    subfolder_name_input = request.form.get('subfolder_name', '').strip()
+    extract_folder_name = secure_filename(subfolder_name_input) if subfolder_name_input else os.path.splitext(filename)[0]
     extract_path = os.path.join(upload_path, extract_folder_name)
 
     file.save(zip_path)
@@ -557,19 +558,20 @@ def save_stl(folder, subfolder):
     images = []
     main_image = None
     if os.path.isdir(base_path):
-        for file in os.listdir(base_path):
-            file_path = os.path.join(base_path, file)
-            if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                if os.path.splitext(file)[0] == '1':
-                    main_image = {
+        for root, dirs, files in os.walk(base_path):
+            for file in files:
+                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    rel_path = os.path.relpath(os.path.join(root, file), STL_DIR)
+                    img_data = {
                         'filename': file,
-                        'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
+                        'url': url_for('stl_files', filename=rel_path)
                     }
-                else:
-                    images.append({
-                        'filename': file,
-                        'url': url_for('stl_files', filename=f"{folder}/{subfolder}/{file}")
-                    })
+
+                    if os.path.splitext(file)[0] == '1' and main_image is None:
+                        main_image = img_data
+                    else:
+                        images.append(img_data)
+
 
     # Load README.txt content if available
     description = ""

@@ -90,6 +90,7 @@
         <hr>
 
         <!-- Upload Form -->
+        <!-- Upload Form -->
         <h3>📤 Upload ZIP File</h3>
         <form action="{{ url_for('upload_stl') }}" method="POST" enctype="multipart/form-data">
             <label for="folder">Select target folder:</label>
@@ -100,9 +101,13 @@
                 {% endfor %}
             </select>
 
+            <label for="subfolder_name">Name of extracted subfolder:</label>
+            <input type="text" name="subfolder_name" placeholder="Enter subfolder name (optional)">
+
             <input type="file" name="file" accept=".zip" required>
             <button type="submit">Upload ZIP</button>
         </form>
+
 
         <a href="{{ url_for('main', username=username, role=role) }}" class="back-link">⬅️ Back to Main</a>
     </div>
