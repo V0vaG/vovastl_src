@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 import shutil
 from io import BytesIO
 from datetime import datetime 
+import random
 
 
 app = Flask(__name__)
@@ -233,13 +234,7 @@ def main():
     user_data = find_user(username)
     upload_enabled = user_data.get("upload") == "true" if user_data and role == "user" else True
 
-    try:
-        stl_folders = [
-            f for f in os.listdir(STL_DIR)
-            if os.path.isdir(os.path.join(STL_DIR, f))
-        ]
-    except FileNotFoundError:
-        stl_folders = []
+    stl_folders = build_folder_cards()
 
     return render_template(
         'main.html',
@@ -248,6 +243,7 @@ def main():
         stl_folders=stl_folders,
         upload_enabled=upload_enabled
     )
+
 
 @app.route('/root_dashboard')
 def root_dashboard():
@@ -737,6 +733,28 @@ def cancel_upload(folder, subfolder):
         flash(f"Upload canceled and folder '{subfolder}' deleted.", "info")
     return redirect(url_for('main'))
 
+
+def build_folder_cards():
+    folder_cards = []
+    for folder in os.listdir(STL_DIR):
+        folder_path = os.path.join(STL_DIR, folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        images = []
+        for subfolder in os.listdir(folder_path):
+            subfolder_path = os.path.join(folder_path, subfolder)
+            if not os.path.isdir(subfolder_path):
+                continue
+            for file in os.listdir(subfolder_path):
+                if os.path.splitext(file)[0] == "1" and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    rel_path = os.path.relpath(os.path.join(subfolder_path, file), STL_DIR)
+                    images.append(url_for('stl_files', filename=rel_path))
+
+        image = random.choice(images) if images else None
+        folder_cards.append({"name": folder, "image": image})
+
+    return folder_cards
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)

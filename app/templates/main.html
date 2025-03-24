@@ -4,6 +4,55 @@
     <meta charset="UTF-8">
     <title>Main Page</title>
     <style>
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+
+        .thumb {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .no-image {
+            width: 100%;
+            height: 140px;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 0.9rem;
+            border-radius: 6px;
+        }
+
+        .card-name {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            color: #333;
+            word-break: break-word;
+        }
+
         body {
             font-family: 'Segoe UI', sans-serif;
             background-color: #f3f4f6;
@@ -99,6 +148,19 @@
     <div class="container">
         <h1>Welcome {{ role|capitalize }} {{ username }}</h1>
 
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin-top: 20px;">
+            {% for folder in stl_folders %}
+            <div onclick="window.location='{{ url_for('view_folder', folder_name=folder.name) }}'" style="background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s; text-align: center; overflow: hidden;">
+                {% if folder.image %}
+                    <img src="{{ folder.image }}" style="width: 100%; height: 140px; object-fit: cover;">
+                {% else %}
+                    <div style="height: 140px; background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #888;">No Image</div>
+                {% endif %}
+                <div style="padding: 10px; font-weight: bold; color: #333;">{{ folder.name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
         <!-- Create Folder Form -->
         <div class="upload-form">
             <form action="{{ url_for('create_stl_folder') }}" method="POST">
@@ -107,28 +169,10 @@
                 <button type="submit">Create Folder</button>
             </form>
         </div>
-
-
-        <h2>📁 STL Folders</h2>
-        <table>
-            <tr>
-                <th>Folder Name</th>
-            </tr>
-            {% for folder in stl_folders %}
-            <tr>
-                <td>
-                    <a href="{{ url_for('view_folder', folder_name=folder) }}">{{ folder }}</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        
 
         <div class="actions">
-            <!-- {% if upload_enabled %}
-            <form action="{{ url_for('upload_page') }}" style="display:inline;">
-                <button type="submit" class="btn">📤 Upload</button>
-            </form>
-            {% endif %} -->
+           
             {% if role == "manager" %}
             <!-- <div class="actions"> -->
                 <form action="{{ url_for('manager_dashboard') }}" style="display:inline;">
