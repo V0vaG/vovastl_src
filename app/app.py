@@ -547,6 +547,13 @@ def save_stl(folder, subfolder):
             new_path = os.path.join(STL_DIR, folder, new_subfolder)
             try:
                 os.rename(base_path, new_path)
+
+                # Rename the .inf file as well
+                old_inf_path = os.path.join(new_path, f"{subfolder}.inf")
+                new_inf_path = os.path.join(new_path, f"{new_subfolder}.inf")
+                if os.path.isfile(old_inf_path):
+                    os.rename(old_inf_path, new_inf_path)
+
                 flash(f"Folder renamed to {new_subfolder}.", "success")
                 # Update path variables
                 base_path = new_path
