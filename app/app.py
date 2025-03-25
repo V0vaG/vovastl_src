@@ -230,19 +230,21 @@ def main():
 
     username = session['user_id']
     role = session.get('role', '')
-
     user_data = find_user(username)
     upload_enabled = user_data.get("upload") == "true" if user_data and role == "user" else True
 
     stl_folders = build_folder_cards()
+    latest_items = get_latest_uploaded_items()
 
     return render_template(
         'main.html',
         username=username,
         role=role,
         stl_folders=stl_folders,
-        upload_enabled=upload_enabled
+        upload_enabled=upload_enabled,
+        latest_items=latest_items
     )
+
 
 
 @app.route('/root_dashboard')
@@ -762,6 +764,59 @@ def build_folder_cards():
         folder_cards.append({"name": folder, "image": image})
 
     return folder_cards
+
+def get_latest_uploaded_items(limit=10):
+    items = []
+
+    for folder in os.listdir(STL_DIR):
+        folder_path = os.path.join(STL_DIR, folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        for subfolder in os.listdir(folder_path):
+            subfolder_path = os.path.join(folder_path, subfolder)
+            if not os.path.isdir(subfolder_path):
+                continue
+
+            inf_path = os.path.join(subfolder_path, f"{subfolder}.inf")
+            if os.path.exists(inf_path):
+                with open(inf_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    uploader = ""
+                    uploaded = ""
+
+                    for line in content.splitlines():
+                        if line.startswith("Uploader:"):
+                            uploader = line.split(":", 1)[1].strip()
+                        elif line.startswith("Uploaded:"):
+                            uploaded = line.split(":", 1)[1].strip()
+
+                    try:
+                        timestamp = datetime.strptime(uploaded, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        continue
+
+                    # Find thumbnail image
+                    image = None
+                    for file in os.listdir(subfolder_path):
+                        if os.path.splitext(file)[0] == "1" and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                            rel_path = os.path.relpath(os.path.join(subfolder_path, file), STL_DIR)
+                            image = url_for('stl_files', filename=rel_path)
+                            break
+
+                    items.append({
+                        "folder": folder,
+                        "subfolder": subfolder,
+                        "uploader": uploader,
+                        "uploaded": uploaded,
+                        "timestamp": timestamp,
+                        "image": image
+                    })
+
+    # Sort by latest timestamp
+    items.sort(key=lambda x: x['timestamp'], reverse=True)
+    return items[:limit]
+
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)

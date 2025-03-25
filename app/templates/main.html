@@ -161,6 +161,22 @@
             {% endfor %}
         </div>
 
+        <h2>🕒 Latest Uploads</h2>
+        <div class="grid-container">
+            {% for item in latest_items %}
+            <div onclick="window.location='{{ url_for('item_detail', folder=item.folder, subfolder=item.subfolder) }}'" class="card">
+                {% if item.image %}
+                    <img src="{{ item.image }}" class="thumb">
+                {% else %}
+                    <div class="no-image">No Image</div>
+                {% endif %}
+                <div class="card-name">{{ item.subfolder }}</div>
+                <div style="font-size: 0.8rem; color: #555;">Uploaded by {{ item.uploader }}<br>{{ item.uploaded }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+
         <!-- Create Folder Form -->
         <div class="upload-form">
             <form action="{{ url_for('create_stl_folder') }}" method="POST">
