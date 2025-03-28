@@ -817,6 +817,44 @@ def get_latest_uploaded_items(limit=10):
     items.sort(key=lambda x: x['timestamp'], reverse=True)
     return items[:limit]
 
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('q', '').strip().lower()
+    results = []
+
+    if query:
+        for folder in os.listdir(STL_DIR):
+            folder_path = os.path.join(STL_DIR, folder)
+            if not os.path.isdir(folder_path):
+                continue
+
+            for subfolder in os.listdir(folder_path):
+                subfolder_path = os.path.join(folder_path, subfolder)
+                if not os.path.isdir(subfolder_path):
+                    continue
+
+                readme_path = os.path.join(subfolder_path, "README.txt")
+                description = ""
+                if os.path.exists(readme_path):
+                    with open(readme_path, 'r', encoding='utf-8') as f:
+                        description = f.read().strip()
+
+                if query in subfolder.lower() or query in description.lower():
+                    thumbnail = None
+                    for file in os.listdir(subfolder_path):
+                        if os.path.splitext(file)[0] == "1" and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                            rel_path = os.path.relpath(os.path.join(subfolder_path, file), STL_DIR)
+                            thumbnail = url_for('stl_files', filename=rel_path)
+                            break
+
+                    results.append({
+                        "folder": folder,
+                        "subfolder": subfolder,
+                        "description": description,
+                        "thumbnail": thumbnail
+                    })
+
+    return render_template("search.html", query=query, results=results)
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
