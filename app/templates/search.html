@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+    <style>
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+    
+        .btn:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+    
+        .btn-blue {
+            background-color: #007bff;
+        }
+    
+        .btn-blue:hover {
+            background-color: #0056b3;
+        }
+    
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+    
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 40px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+        .card { background: #fff; border-radius: 10px; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; cursor: pointer; transition: 0.2s; }
+        .card:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        .thumb { width: 100%; height: 140px; object-fit: cover; border-radius: 6px; }
+        .no-image { width: 100%; height: 140px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #888; font-size: 0.9rem; border-radius: 6px; }
+        h1 { text-align: center; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Search Results for "{{ query }}"</h1>
+
+        {% if results %}
+        <div class="grid-container">
+            {% for item in results %}
+            <div class="card" onclick="window.location='{{ url_for('item_detail', folder=item.folder, subfolder=item.subfolder) }}'">
+                {% if item.thumbnail %}
+                    <img src="{{ item.thumbnail }}" class="thumb">
+                {% else %}
+                    <div class="no-image">No Image</div>
+                {% endif %}
+                <div style="margin-top: 10px; font-weight: bold;">{{ item.subfolder }}</div>
+                <div style="font-size: 0.8rem; color: #666;">{{ item.description[:100] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="text-align: center; color: #666;">No results found.</p>
+        {% endif %}
+
+        <div class="actions">
+            <form action="{{ url_for('main') }}" method="get" style="display:inline;">
+                <button type="submit" class="btn btn-blue">← Back to Main</button>
+            </form>
+        </div>
+        
+        
+        
+    </div>
+</body>
+</html>
