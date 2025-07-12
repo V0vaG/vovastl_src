@@ -149,6 +149,13 @@
                 <button type="submit" class="download-btn" style="background-color: #dc3545;">🗑️ Delete Folder</button>
             </form>
             {% endif %}
+
+            <form method="POST" action="{{ url_for('add_stl_file', folder=folder, subfolder=subfolder) }}" enctype="multipart/form-data">
+                <input type="file" name="stl_file" accept=".stl" required>
+                <button type="submit" class="download-btn" style="background-color: #28a745;">➕ Add STL File</button>
+            </form>
+
+
         
             <form method="get" action="{{ url_for('view_folder', folder_name=folder) }}">
                 <button type="submit" class="download-btn" style="background-color: #6c757d;">⬅️ Back to Folder View</button>

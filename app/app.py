@@ -75,6 +75,49 @@ def find_user(username):
     users = load_users()
     return next((u for u in users if u['user'] == username), None)
 
+@app.route('/add_stl_file/<folder>/<subfolder>', methods=['POST'])
+def add_stl_file(folder, subfolder):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    file = request.files.get('stl_file')
+    if not file or not file.filename.lower().endswith('.stl'):
+        flash('Only .stl files are allowed.', 'danger')
+        return redirect(url_for('item_detail', folder=folder, subfolder=subfolder))
+
+    base_path = os.path.normpath(os.path.join(STL_DIR, folder, subfolder))
+    if not base_path.startswith(STL_DIR) or not os.path.isdir(base_path):
+        flash("Invalid folder path.", "danger")
+        return redirect(url_for('item_detail', folder=folder, subfolder=subfolder))
+
+    try:
+        # Ensure files/ folder exists
+        files_path = os.path.join(base_path, 'files')
+        os.makedirs(files_path, exist_ok=True)
+
+        # Save STL file to files/
+        filename = secure_filename(file.filename)
+        stl_path = os.path.join(files_path, filename)
+        file.save(stl_path)
+
+        # Regenerate ZIP
+        zip_output = os.path.join(base_path, f"{subfolder}.zip")
+        with zipfile.ZipFile(zip_output, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(base_path):
+                for file in files:
+                    if file.endswith('.zip'):
+                        continue  # skip existing zip
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, base_path)
+                    zipf.write(full_path, rel_path)
+
+        flash(f"STL file '{filename}' added and ZIP updated.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "danger")
+
+    return redirect(url_for('item_detail', folder=folder, subfolder=subfolder))
+
+
 @app.route('/update_user_upload', methods=['POST'])
 def update_user_upload():
     if 'user_id' not in session or session['role'] != 'manager':
