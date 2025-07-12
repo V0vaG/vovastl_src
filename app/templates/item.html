@@ -150,10 +150,11 @@
             </form>
             {% endif %}
 
-            <form method="POST" action="{{ url_for('add_stl_file', folder=folder, subfolder=subfolder) }}" enctype="multipart/form-data">
-                <input type="file" name="stl_file" accept=".stl" required>
-                <button type="submit" class="download-btn" style="background-color: #28a745;">➕ Add STL File</button>
+            <form id="addStlForm" method="POST" action="{{ url_for('add_stl_file', folder=folder, subfolder=subfolder) }}" enctype="multipart/form-data">
+                <input type="file" id="stlFileInput" name="stl_file" accept=".stl" style="display: none;" onchange="document.getElementById('addStlForm').submit()">
+                <button type="button" class="download-btn" style="background-color: #28a745;" onclick="document.getElementById('stlFileInput').click()">➕ Add STL File</button>
             </form>
+
 
 
         

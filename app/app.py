@@ -14,7 +14,8 @@ import random
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-version = os.getenv('VERSION')
+version = os.getenv('VERSION', 'N/A')
+branch = os.getenv('BRANCH','N/A')
 
 # Set up paths
 alias = "vovastl"
@@ -264,7 +265,7 @@ def login():
 
         flash("Invalid username or password", "danger")
 
-    return render_template('login.html', version=version)
+    return render_template('login.html', version=version, branch=branch)
 
 @app.route('/main')
 def main():
