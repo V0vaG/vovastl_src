@@ -1,0 +1,614 @@
+{
+  "modules": {
+    "sphere_generator": {
+      "display_name": "Sphere Generator",
+      "description": "Creates simple sphere models with customizable radius",
+      "icon": "🌐",
+      "functions": {
+        "make_sphere": {
+          "display_name": "Simple Sphere",
+          "description": "Creates a solid sphere",
+          "parameters": {
+            "radius": {
+              "type": "number",
+              "default": 10.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Radius (mm)",
+              "help": "Radius of the sphere"
+            }
+          }
+        },
+        "make_hollow_sphere": {
+          "display_name": "Hollow Sphere",
+          "description": "Creates a hollow sphere with wall thickness",
+          "parameters": {
+            "radius": {
+              "type": "number",
+              "default": 10.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Radius (mm)",
+              "help": "Outer radius of the sphere"
+            },
+            "wall_thickness": {
+              "type": "number",
+              "default": 2.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the sphere wall"
+            }
+          }
+        }
+      }
+    },
+    "simple_box": {
+      "display_name": "Simple Box",
+      "description": "Creates basic box models with x, y, z dimensions",
+      "icon": "📦",
+      "functions": {
+        "make_simple_box": {
+          "display_name": "Solid Box",
+          "description": "Creates a simple solid box",
+          "parameters": {
+            "x": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "X (Length) (mm)",
+              "help": "Length in X direction"
+            },
+            "y": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Y (Width) (mm)",
+              "help": "Width in Y direction"
+            },
+            "z": {
+              "type": "number",
+              "default": 50.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Z (Height) (mm)",
+              "help": "Height in Z direction"
+            }
+          }
+        },
+        "make_hollow_box": {
+          "display_name": "Hollow Box",
+          "description": "Creates a hollow box with wall thickness",
+          "parameters": {
+            "x": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "X (Length) (mm)",
+              "help": "Outer length in X direction"
+            },
+            "y": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Y (Width) (mm)",
+              "help": "Outer width in Y direction"
+            },
+            "z": {
+              "type": "number",
+              "default": 50.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Z (Height) (mm)",
+              "help": "Outer height in Z direction"
+            },
+            "wall_thickness": {
+              "type": "number",
+              "default": 5.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the walls"
+            }
+          }
+        },
+        "make_rounded_box": {
+          "display_name": "Rounded Box",
+          "description": "Creates a solid box with rounded corners",
+          "parameters": {
+            "x": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "X (Length) (mm)",
+              "help": "Length in X direction"
+            },
+            "y": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Y (Width) (mm)",
+              "help": "Width in Y direction"
+            },
+            "z": {
+              "type": "number",
+              "default": 50.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Z (Height) (mm)",
+              "help": "Height in Z direction"
+            },
+            "corner_radius": {
+              "type": "number",
+              "default": 5.0,
+              "min": 0.0,
+              "step": 0.1,
+              "label": "Corner Radius (mm)",
+              "help": "Radius of corner rounding"
+            }
+          }
+        }
+      }
+    },
+    "web_box_generator": {
+      "display_name": "Web Box Generator",
+      "description": "Creates advanced box models with sealing features",
+      "icon": "📦",
+      "functions": {
+        "make_simple_hollow_box": {
+          "display_name": "Simple Hollow Box",
+          "description": "Creates a simple hollow box for preview",
+          "parameters": {
+            "L": {
+              "type": "number",
+              "default": 160.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Length (mm)",
+              "help": "Length of the inner cavity"
+            },
+            "W": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Width (mm)",
+              "help": "Width of the inner cavity"
+            },
+            "H": {
+              "type": "number",
+              "default": 60.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Height (mm)",
+              "help": "Height of the inner cavity"
+            },
+            "wall": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the side walls"
+            },
+            "floor": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Floor Thickness (mm)",
+              "help": "Thickness of the bottom floor"
+            },
+            "corner_fillet": {
+              "type": "number",
+              "default": 4.0,
+              "min": 0.0,
+              "step": 0.1,
+              "label": "Corner Fillet (mm)",
+              "help": "Radius of corner rounding"
+            },
+            "rim_height": {
+              "type": "number",
+              "default": 6.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Rim Height (mm)",
+              "help": "Height of the sealing rim on bottom"
+            }
+          }
+        },
+        "make_bottom_box": {
+          "display_name": "Bottom Box",
+          "description": "Creates the bottom box with all features",
+          "parameters": {
+            "L": {
+              "type": "number",
+              "default": 160.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Length (mm)",
+              "help": "Length of the inner cavity"
+            },
+            "W": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Width (mm)",
+              "help": "Width of the inner cavity"
+            },
+            "H": {
+              "type": "number",
+              "default": 60.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Height (mm)",
+              "help": "Height of the inner cavity"
+            },
+            "wall": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the side walls"
+            },
+            "floor": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Floor Thickness (mm)",
+              "help": "Thickness of the bottom floor"
+            },
+            "corner_fillet": {
+              "type": "number",
+              "default": 4.0,
+              "min": 0.0,
+              "step": 0.1,
+              "label": "Corner Fillet (mm)",
+              "help": "Radius of corner rounding"
+            },
+            "rim_height": {
+              "type": "number",
+              "default": 6.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Rim Height (mm)",
+              "help": "Height of the sealing rim on bottom"
+            },
+            "tongue_height": {
+              "type": "number",
+              "default": 2.2,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Tongue Height (mm)",
+              "help": "Height of the sealing tongue"
+            },
+            "tongue_clearance": {
+              "type": "number",
+              "default": 0.2,
+              "min": 0.0,
+              "step": 0.05,
+              "label": "Tongue Clearance (mm)",
+              "help": "Clearance between tongue and groove"
+            },
+            "ribs": {
+              "type": "boolean",
+              "default": false,
+              "label": "Add Internal Ribs",
+              "help": "Add internal strengthening ribs to the bottom"
+            }
+          }
+        },
+        "make_lid": {
+          "display_name": "Lid",
+          "description": "Creates the lid with sealing groove and screw holes",
+          "parameters": {
+            "L": {
+              "type": "number",
+              "default": 160.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Length (mm)",
+              "help": "Length of the inner cavity"
+            },
+            "W": {
+              "type": "number",
+              "default": 100.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Inner Width (mm)",
+              "help": "Width of the inner cavity"
+            },
+            "wall": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the side walls"
+            },
+            "lid_thickness": {
+              "type": "number",
+              "default": 4.0,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Lid Thickness (mm)",
+              "help": "Thickness of the lid top"
+            },
+            "overhang": {
+              "type": "number",
+              "default": 2.0,
+              "min": 0.0,
+              "step": 0.1,
+              "label": "Overhang (mm)",
+              "help": "Overhang of lid over box walls"
+            },
+            "corner_fillet": {
+              "type": "number",
+              "default": 4.0,
+              "min": 0.0,
+              "step": 0.1,
+              "label": "Corner Fillet (mm)",
+              "help": "Radius of corner rounding"
+            },
+            "groove_depth": {
+              "type": "number",
+              "default": 2.4,
+              "min": 0.1,
+              "step": 0.1,
+              "label": "Groove Depth (mm)",
+              "help": "Depth of the sealing groove in lid"
+            },
+            "tongue_clearance": {
+              "type": "number",
+              "default": 0.2,
+              "min": 0.0,
+              "step": 0.05,
+              "label": "Tongue Clearance (mm)",
+              "help": "Clearance between tongue and groove"
+            }
+          }
+        }
+      }
+    },
+    "rugged_box_advanced": {
+      "display_name": "Advanced Rugged Box",
+      "description": "Creates professional rugged boxes with hinges, latches, and reinforcement",
+      "icon": "🔧",
+      "functions": {
+        "make_bottom": {
+          "display_name": "Bottom Box",
+          "description": "Creates the bottom part with hinge and latch mounting points",
+          "parameters": {
+            "length": {
+              "type": "number",
+              "default": 200.0,
+              "min": 50.0,
+              "step": 1.0,
+              "label": "Length (mm)",
+              "help": "External length of the box"
+            },
+            "width": {
+              "type": "number",
+              "default": 150.0,
+              "min": 50.0,
+              "step": 1.0,
+              "label": "Width (mm)",
+              "help": "External width of the box"
+            },
+            "height": {
+              "type": "number",
+              "default": 80.0,
+              "min": 30.0,
+              "step": 1.0,
+              "label": "Height (mm)",
+              "help": "External height of the box"
+            },
+            "wall_thickness": {
+              "type": "number",
+              "default": 4.0,
+              "min": 2.0,
+              "step": 0.5,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the side walls"
+            },
+            "floor_thickness": {
+              "type": "number",
+              "default": 6.0,
+              "min": 3.0,
+              "step": 0.5,
+              "label": "Floor Thickness (mm)",
+              "help": "Thickness of the bottom floor"
+            },
+            "corner_radius": {
+              "type": "number",
+              "default": 8.0,
+              "min": 0.0,
+              "step": 1.0,
+              "label": "Corner Radius (mm)",
+              "help": "Radius of corner rounding"
+            },
+            "rim_height": {
+              "type": "number",
+              "default": 8.0,
+              "min": 0.0,
+              "step": 1.0,
+              "label": "Rim Height (mm)",
+              "help": "Height of the sealing rim"
+            },
+            "hinge_mount_width": {
+              "type": "number",
+              "default": 20.0,
+              "min": 10.0,
+              "step": 1.0,
+              "label": "Hinge Mount Width (mm)",
+              "help": "Width of hinge mounting area"
+            },
+            "latch_mount_width": {
+              "type": "number",
+              "default": 15.0,
+              "min": 10.0,
+              "step": 1.0,
+              "label": "Latch Mount Width (mm)",
+              "help": "Width of latch mounting area"
+            }
+          }
+        },
+        "make_lid": {
+          "display_name": "Lid",
+          "description": "Creates the lid with hinge and latch mounting points",
+          "parameters": {
+            "length": {
+              "type": "number",
+              "default": 200.0,
+              "min": 50.0,
+              "step": 1.0,
+              "label": "Length (mm)",
+              "help": "External length of the lid"
+            },
+            "width": {
+              "type": "number",
+              "default": 150.0,
+              "min": 50.0,
+              "step": 1.0,
+              "label": "Width (mm)",
+              "help": "External width of the lid"
+            },
+            "lid_thickness": {
+              "type": "number",
+              "default": 8.0,
+              "min": 4.0,
+              "step": 0.5,
+              "label": "Lid Thickness (mm)",
+              "help": "Thickness of the lid top"
+            },
+            "wall_thickness": {
+              "type": "number",
+              "default": 4.0,
+              "min": 2.0,
+              "step": 0.5,
+              "label": "Wall Thickness (mm)",
+              "help": "Thickness of the lid walls"
+            },
+            "corner_radius": {
+              "type": "number",
+              "default": 8.0,
+              "min": 0.0,
+              "step": 1.0,
+              "label": "Corner Radius (mm)",
+              "help": "Radius of corner rounding"
+            },
+            "overhang": {
+              "type": "number",
+              "default": 3.0,
+              "min": 0.0,
+              "step": 0.5,
+              "label": "Overhang (mm)",
+              "help": "Overhang of lid over box walls"
+            },
+            "hinge_mount_width": {
+              "type": "number",
+              "default": 20.0,
+              "min": 10.0,
+              "step": 1.0,
+              "label": "Hinge Mount Width (mm)",
+              "help": "Width of hinge mounting area"
+            },
+            "latch_mount_width": {
+              "type": "number",
+              "default": 15.0,
+              "min": 10.0,
+              "step": 1.0,
+              "label": "Latch Mount Width (mm)",
+              "help": "Width of latch mounting area"
+            }
+          }
+        },
+        "make_hinge": {
+          "display_name": "Hinge",
+          "description": "Creates a simple hinge for the rugged box",
+          "parameters": {
+            "length": {
+              "type": "number",
+              "default": 30.0,
+              "min": 20.0,
+              "step": 1.0,
+              "label": "Length (mm)",
+              "help": "Length of the hinge"
+            },
+            "width": {
+              "type": "number",
+              "default": 15.0,
+              "min": 10.0,
+              "step": 1.0,
+              "label": "Width (mm)",
+              "help": "Width of the hinge"
+            },
+            "thickness": {
+              "type": "number",
+              "default": 3.0,
+              "min": 2.0,
+              "step": 0.5,
+              "label": "Thickness (mm)",
+              "help": "Thickness of the hinge material"
+            },
+            "pin_diameter": {
+              "type": "number",
+              "default": 4.0,
+              "min": 2.0,
+              "step": 0.5,
+              "label": "Pin Diameter (mm)",
+              "help": "Diameter of the hinge pin"
+            }
+          }
+        },
+        "make_latch": {
+          "display_name": "Latch",
+          "description": "Creates a simple latch for the rugged box",
+          "parameters": {
+            "length": {
+              "type": "number",
+              "default": 40.0,
+              "min": 30.0,
+              "step": 1.0,
+              "label": "Length (mm)",
+              "help": "Length of the latch"
+            },
+            "width": {
+              "type": "number",
+              "default": 20.0,
+              "min": 15.0,
+              "step": 1.0,
+              "label": "Width (mm)",
+              "help": "Width of the latch"
+            },
+            "thickness": {
+              "type": "number",
+              "default": 4.0,
+              "min": 2.0,
+              "step": 0.5,
+              "label": "Thickness (mm)",
+              "help": "Thickness of the latch material"
+            },
+            "catch_depth": {
+              "type": "number",
+              "default": 8.0,
+              "min": 4.0,
+              "step": 1.0,
+              "label": "Catch Depth (mm)",
+              "help": "Depth of the catch mechanism"
+            }
+          }
+        }
+      }
+    }
+  }
+}

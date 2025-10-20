@@ -19,6 +19,57 @@ try:
 except ImportError:
     CADQUERY_AVAILABLE = False
 
+# Import box generation functions from external module
+try:
+    from moduls.web_box_generator import (
+        make_simple_hollow_box,
+        make_bottom_box,
+        make_lid,
+        export_stl_bytes
+    )
+except ImportError:
+    # Fallback functions if module import fails
+    def make_simple_hollow_box(*args, **kwargs):
+        raise ImportError("Box generator module not available")
+    def make_bottom_box(*args, **kwargs):
+        raise ImportError("Box generator module not available")
+    def make_lid(*args, **kwargs):
+        raise ImportError("Box generator module not available")
+    def export_stl_bytes(*args, **kwargs):
+        raise ImportError("Box generator module not available")
+
+# Import module discovery system
+try:
+    from moduls.module_discovery import (
+        discover_modules,
+        get_available_modules,
+        get_module_functions
+    )
+except ImportError:
+    # Fallback functions if module discovery fails
+    def discover_modules(*args, **kwargs):
+        return {}
+    def get_available_modules(*args, **kwargs):
+        return []
+    def get_module_functions(*args, **kwargs):
+        return None
+
+# Load modules configuration from JSON
+def load_modules_config():
+    """Load modules configuration from JSON file"""
+    try:
+        import json
+        import os
+        config_path = os.path.join(os.path.dirname(__file__), 'moduls', 'modules.json')
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading modules config: {e}")
+        return {"modules": {}}
+
+# Load the modules configuration
+MODULES_CONFIG = load_modules_config()
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -912,259 +963,243 @@ def search():
 # CadQuery modeling functions (if available)
 # -----------------------------
 
-def make_simple_hollow_box(inner_len, inner_wid, inner_h, wall=3.0, floor=3.0, corner_fillet=4.0, rim_height=6.0):
+
+
+
+
+def generate_model_dynamic(module_name, function_name, part, L, W, H, **kwargs):
     """
-    Creates a simple hollow box for preview - no bosses, tongue, or other features
-    Just a basic hollow box to show the interior space clearly
+    Dynamically generate a model using the specified module and function
     """
-    if not CADQUERY_AVAILABLE:
-        raise ImportError("CadQuery not available")
-        
-    outer_len = inner_len + 2 * wall
-    outer_wid = inner_wid + 2 * wall
-    outer_h = floor + inner_h + rim_height  # Include rim height for accurate preview
-
-    # Outer body
-    body = (
-        cq.Workplane("XY")
-        .box(outer_len, outer_wid, outer_h, centered=(True, True, False))
-    )
-    if corner_fillet > 0:
-        body = body.edges("|Z").fillet(corner_fillet)
-
-    # Hollow out - just basic hollowing
-    inner = (
-        cq.Workplane("XY")
-        .box(inner_len, inner_wid, inner_h, centered=(True, True, False))
-        .translate((0, 0, floor))
-    )
-    body = body.cut(inner)
-
-    return body
-
-def make_bottom_box(
-    inner_len, inner_wid, inner_h,
-    wall=3.0, floor=3.0,
-    corner_fillet=4.0,
-    rim_height=6.0,
-    tongue_height=2.2,
-    tongue_clearance=0.2,
-    screw_d=3.2,
-    screw_csink_d=6.0,
-    screw_csink_angle=82,
-    boss_outer_d=2.0,  # Much smaller bosses
-    boss_h=3.0,        # Much shorter bosses
-    boss_core_d=1.0,   # Much smaller pilot holes
-    ribs=False,
-    rib_thickness=2.0,
-    rib_pitch=20.0,
-):
-    """
-    Creates the bottom box with all features
-    """
-    if not CADQUERY_AVAILABLE:
-        raise ImportError("CadQuery not available")
-        
-    outer_len = inner_len + 2 * wall
-    outer_wid = inner_wid + 2 * wall
-    outer_h   = floor + inner_h + rim_height
-
-    # Outer body
-    body = (
-        cq.Workplane("XY")
-        .box(outer_len, outer_wid, outer_h, centered=(True, True, False))
-    )
-    if corner_fillet > 0:
-        body = body.edges("|Z").fillet(corner_fillet)
-
-    # Hollow out - leave floor + walls + upper rim
-    cavity_h = inner_h + rim_height
-    inner = (
-        cq.Workplane("XY")
-        .box(inner_len, inner_wid, cavity_h, centered=(True, True, False))
-        .translate((0, 0, floor))
-    )
-    body = body.cut(inner)
-
-    # Sealing tongue (tongue) - protrudes from rim inward
-    # Only add tongue for larger boxes to preserve interior space
-    if inner_len > 60 and inner_wid > 40:
-        tongue_len = inner_len - 2 * tongue_clearance
-        tongue_wid = inner_wid - 2 * tongue_clearance
-        tongue = (
-            cq.Workplane("XY")
-            .box(tongue_len, tongue_wid, tongue_height, centered=(True, True, False))
-            .translate((0, 0, floor + inner_h))  # at top of inner cavity
-        )
-        # Break corners slightly on tongue to prevent friction
-        tongue = tongue.edges("|Z").fillet(min(0.6, max(0.0, corner_fillet/4)))
-        body = body.union(tongue)
-
-    # Bosses for corners (bottom): four bosses at inner corners, with pilot hole
-    # Make bosses smaller and position them better to preserve interior space
-    boss_offset_x = inner_len/2 - 8  # Closer to walls but still safe
-    boss_offset_y = inner_wid/2 - 8
-    boss_centers = [
-        (+boss_offset_x, +boss_offset_y),
-        (+boss_offset_x, -boss_offset_y),
-        (-boss_offset_x, +boss_offset_y),
-        (-boss_offset_x, -boss_offset_y),
-    ]
-    
-    # Only add bosses if the box is large enough
-    if inner_len > 80 and inner_wid > 60:
-        bosses = cq.Workplane("XY")
-        for (x, y) in boss_centers:
-            bosses = bosses.union(
-                cq.Workplane("XY")
-                .workplane(offset=floor)
-                .center(x, y)
-                .cylinder(boss_h, boss_outer_d/2.0)
-            )
-        body = body.union(bosses)
-
-        # Pilot holes in bosses (for M3 plastic threading or hot insert after drilling)
-        for (x, y) in boss_centers:
-            pilot_hole = (
-                cq.Workplane("XY")
-                .workplane(offset=floor)
-                .center(x, y)
-                .cylinder(boss_h+1, boss_core_d/2.0)
-            )
-            body = body.cut(pilot_hole)
-
-    # Optional strengthening ribs on floor
-    if ribs:
-        # Rib grid along X and Y
-        # Along X
-        y = -inner_wid/2 + rib_pitch
-        while y < inner_wid/2 - rib_pitch/2:
-            rib = (
-                cq.Workplane("XY")
-                .workplane(offset=floor + 0.01)
-                .center(0, y)
-                .rect(inner_len - 2*8, rib_thickness)
-                .extrude( min(8.0, inner_h/3) )
-            )
-            body = body.union(rib)
-            y += rib_pitch
-        # Along Y
-        x = -inner_len/2 + rib_pitch
-        while x < inner_len/2 - rib_pitch/2:
-            rib = (
-                cq.Workplane("XY")
-                .workplane(offset=floor + 0.01)
-                .center(x, 0)
-                .rect(rib_thickness, inner_wid - 2*8)
-                .extrude( min(8.0, inner_h/3) )
-            )
-            body = body.union(rib)
-            x += rib_pitch
-
-    return body
-
-def make_lid(
-    inner_len, inner_wid,
-    wall=3.0, lid_thickness=4.0,
-    overhang=2.0,            # "rim" that covers the bottom's wall
-    corner_fillet=4.0,
-    groove_depth=2.4,        # seal groove depth
-    groove_clearance=0.25,   # clearance between bottom tongue and lid groove
-    screw_d=3.2,             # screw hole in lid (clearance)
-    screw_csink_d=6.0,       # countersink diameter
-    screw_csink_angle=82,    # countersink angle
-):
-    """
-    Creates the lid with sealing groove and screw holes
-    """
-    if not CADQUERY_AVAILABLE:
-        raise ImportError("CadQuery not available")
-        
-    outer_len = inner_len + 2 * (wall + overhang)
-    outer_wid = inner_wid + 2 * (wall + overhang)
-    height    = lid_thickness + wall  # including margin for seal groove
-
-    lid = (
-        cq.Workplane("XY")
-        .box(outer_len, outer_wid, height, centered=(True, True, False))
-    )
-    if corner_fillet > 0:
-        lid = lid.edges("|Z").fillet(corner_fillet)
-
-    # Hollow out to create "cap" - that sits on box walls
-    inner_cap_len = inner_len + 2 * wall + 0.3  # small tolerance
-    inner_cap_wid = inner_wid + 2 * wall + 0.3
-    inner_cap_h   = height - lid_thickness + 0.2
-
-    cavity = (
-        cq.Workplane("XY")
-        .box(inner_cap_len, inner_cap_wid, inner_cap_h, centered=(True, True, False))
-        .translate((0, 0, lid_thickness))  # leave top plate with lid_thickness thickness
-    )
-    lid = lid.cut(cavity)
-
-    # Seal groove - slightly larger than bottom tongue
-    groove_len = inner_len - 2 * groove_clearance
-    groove_wid = inner_wid - 2 * groove_clearance
-    groove = (
-        cq.Workplane("XY")
-        .box(groove_len, groove_wid, groove_depth, centered=(True, True, False))
-        .translate((0, 0, lid_thickness - groove_depth + 0.2))
-    )
-    lid = lid.cut(groove)
-
-    # Countersunk screw holes (4 corners)
-    # Set positions relative to lid rim
-    hole_offset_x = (inner_len/2) + wall - 8
-    hole_offset_y = (inner_wid/2) + wall - 8
-    hole_centers = [
-        (+hole_offset_x, +hole_offset_y),
-        (+hole_offset_x, -hole_offset_y),
-        (-hole_offset_x, +hole_offset_y),
-        (-hole_offset_x, -hole_offset_y),
-    ]
-
-    # Holes through entire lid
-    for (x, y) in hole_centers:
-        lid = (
-            lid.faces(">Z").workplane(centerOption="CenterOfBoundBox")
-            .center(x, y)
-            .cskHole(screw_d, screw_csink_d, screw_csink_angle, depth=height+1)
-        )
-
-    return lid
-
-def export_stl_bytes(solid, tol=0.02, ang=0.2) -> bytes:
-    """
-    Export CadQuery solid to STL bytes
-    """
-    if not CADQUERY_AVAILABLE:
-        raise ImportError("CadQuery not available")
-        
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp_file:
-        tmp_path = tmp_file.name
-    
     try:
-        # Export to temporary file
-        cq.exporters.export(solid, tmp_path, exportType='STL', tolerance=tol, angularTolerance=ang)
+        # Import the module dynamically
+        import importlib.util
+        import sys
         
-        # Read the file content
-        with open(tmp_path, 'rb') as f:
-            data = f.read()
+        import os
+        module_path = os.path.join(os.path.dirname(__file__), 'moduls', f"{module_name}.py")
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load module {module_name}")
         
-        return data
-    finally:
-        # Clean up temporary file
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Get the function
+        if not hasattr(module, function_name):
+            raise AttributeError(f"Function {function_name} not found in module {module_name}")
+        
+        func = getattr(module, function_name)
+        
+        # Call the function with appropriate parameters based on module and function
+        if module_name in ['web_box_generator', 'rugged_box']:
+            # Box modules - call function based on function_name, not part
+            if function_name == 'make_simple_hollow_box':
+                return func(L, W, H, 
+                           wall=kwargs.get('wall', 3.0),
+                           floor=kwargs.get('floor', 3.0),
+                           corner_fillet=kwargs.get('corner_fillet', 4.0),
+                           rim_height=kwargs.get('rim_height', 6.0))
+            elif function_name == 'make_bottom_box':
+                return func(L, W, H,
+                           wall=kwargs.get('wall', 3.0),
+                           floor=kwargs.get('floor', 3.0),
+                           corner_fillet=kwargs.get('corner_fillet', 4.0),
+                           rim_height=kwargs.get('rim_height', 6.0),
+                           tongue_height=kwargs.get('tongue_height', 2.2),
+                           tongue_clearance=kwargs.get('tongue_clearance', 0.2),
+                           screw_d=kwargs.get('screw_d', 3.2),
+                           screw_csink_d=kwargs.get('screw_csink_d', 6.0),
+                           screw_csink_angle=kwargs.get('screw_csink_angle', 82),
+                           boss_outer_d=kwargs.get('boss_outer_d', 2.0),
+                           boss_h=kwargs.get('boss_h', 3.0),
+                           boss_core_d=kwargs.get('boss_core_d', 1.0),
+                           ribs=kwargs.get('ribs', False),
+                           rib_thickness=kwargs.get('rib_thickness', 2.0),
+                           rib_pitch=kwargs.get('rib_pitch', 20.0))
+            elif function_name == 'make_lid':
+                return func(L, W,
+                           wall=kwargs.get('wall', 3.0),
+                           lid_thickness=kwargs.get('lid_thickness', 4.0),
+                           overhang=kwargs.get('overhang', 2.0),
+                           corner_fillet=kwargs.get('corner_fillet', 4.0),
+                           groove_depth=kwargs.get('groove_depth', 2.4),
+                           groove_clearance=kwargs.get('tongue_clearance', 0.2),
+                           screw_d=kwargs.get('screw_d', 3.2),
+                           screw_csink_d=kwargs.get('screw_csink_d', 6.0),
+                           screw_csink_angle=kwargs.get('screw_csink_angle', 82))
+            else:
+                # Fallback for unknown functions
+                return func(L, W, H)
+        
+        elif module_name == 'sphere_generator':
+            # Sphere module - use radius parameter
+            if function_name == 'make_hollow_sphere':
+                return func(
+                    radius=kwargs.get('radius', 10.0),
+                    wall_thickness=kwargs.get('wall_thickness', 2.0)
+                )
+            else:
+                return func(
+                    radius=kwargs.get('radius', 10.0)
+                )
+        
+        elif module_name == 'simple_box':
+            # Simple box module - use x, y, z parameters
+            if function_name == 'make_hollow_box':
+                return func(
+                    x=kwargs.get('x', 100.0),
+                    y=kwargs.get('y', 100.0),
+                    z=kwargs.get('z', 50.0),
+                    wall_thickness=kwargs.get('wall_thickness', 5.0)
+                )
+            elif function_name == 'make_rounded_box':
+                return func(
+                    x=kwargs.get('x', 100.0),
+                    y=kwargs.get('y', 100.0),
+                    z=kwargs.get('z', 50.0),
+                    corner_radius=kwargs.get('corner_radius', kwargs.get('radius', 5.0))  # Support both 'corner_radius' and 'radius'
+                )
+            else:
+                return func(
+                    x=kwargs.get('x', 100.0),
+                    y=kwargs.get('y', 100.0),
+                    z=kwargs.get('z', 50.0)
+                )
+        
+        elif module_name == 'rugged_box_advanced':
+            # Advanced rugged box module
+            if function_name == 'make_bottom':
+                return func(
+                    length=kwargs.get('length', 200.0),
+                    width=kwargs.get('width', 150.0),
+                    height=kwargs.get('height', 80.0),
+                    wall_thickness=kwargs.get('wall_thickness', 4.0),
+                    floor_thickness=kwargs.get('floor_thickness', 6.0),
+                    corner_radius=kwargs.get('corner_radius', 8.0),
+                    rim_height=kwargs.get('rim_height', 8.0),
+                    hinge_mount_width=kwargs.get('hinge_mount_width', 20.0),
+                    latch_mount_width=kwargs.get('latch_mount_width', 15.0)
+                )
+            elif function_name == 'make_lid':
+                return func(
+                    length=kwargs.get('length', 200.0),
+                    width=kwargs.get('width', 150.0),
+                    lid_thickness=kwargs.get('lid_thickness', 8.0),
+                    wall_thickness=kwargs.get('wall_thickness', 4.0),
+                    corner_radius=kwargs.get('corner_radius', 8.0),
+                    overhang=kwargs.get('overhang', 3.0),
+                    hinge_mount_width=kwargs.get('hinge_mount_width', 20.0),
+                    latch_mount_width=kwargs.get('latch_mount_width', 15.0)
+                )
+            elif function_name == 'make_hinge':
+                return func(
+                    length=kwargs.get('length', 30.0),
+                    width=kwargs.get('width', 15.0),
+                    thickness=kwargs.get('thickness', 3.0),
+                    pin_diameter=kwargs.get('pin_diameter', 4.0)
+                )
+            elif function_name == 'make_latch':
+                return func(
+                    length=kwargs.get('length', 40.0),
+                    width=kwargs.get('width', 20.0),
+                    thickness=kwargs.get('thickness', 4.0),
+                    catch_depth=kwargs.get('catch_depth', 8.0)
+                )
+            else:
+                # Fallback for unknown functions
+                return func(L, W, H)
+        
+        else:
+            # Fallback - try to call with basic parameters
+            return func(L, W, H)
+    
+    except Exception as e:
+        raise Exception(f"Error generating model with {module_name}.{function_name}: {str(e)}")
 
 @app.route('/model_generator')
 def model_generator():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    return render_template('model_generator.html', username=session['user_id'], role=session['role'], cadquery_available=CADQUERY_AVAILABLE)
+    # Get available modules from JSON configuration
+    available_modules = []
+    for module_name, module_info in MODULES_CONFIG.get("modules", {}).items():
+        available_modules.append({
+            "value": module_name,
+            "label": module_info.get("display_name", module_name),
+            "description": module_info.get("description", f"Module: {module_name}"),
+            "icon": module_info.get("icon", "🔧")
+        })
+    
+    # Debug: Print available modules
+    print(f"DEBUG: Available modules: {available_modules}")
+    
+    return render_template('model_generator.html', 
+                         username=session['user_id'], 
+                         role=session['role'], 
+                         cadquery_available=CADQUERY_AVAILABLE,
+                         available_modules=available_modules)
+
+@app.route('/api/modules')
+def api_modules():
+    """API endpoint to get available modules"""
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    try:
+        # Get modules from JSON configuration
+        modules = []
+        for module_name, module_info in MODULES_CONFIG.get("modules", {}).items():
+            modules.append({
+                "value": module_name,
+                "label": module_info.get("display_name", module_name),
+                "description": module_info.get("description", f"Module: {module_name}"),
+                "icon": module_info.get("icon", "🔧")
+            })
+        return jsonify({"modules": modules})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/module/<module_name>')
+def api_module_functions(module_name):
+    """API endpoint to get functions for a specific module"""
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    try:
+        print(f"DEBUG: API called for module: {module_name}")
+        
+        # Get module info from JSON configuration
+        module_info = MODULES_CONFIG.get("modules", {}).get(module_name)
+        print(f"DEBUG: Module info: {module_info}")
+        
+        if module_info is None:
+            print(f"DEBUG: Module {module_name} not found")
+            return jsonify({"error": "Module not found"}), 404
+        
+        # Format the response to match the expected structure
+        response = {
+            "display_name": module_info.get("display_name", module_name),
+            "description": module_info.get("description", f"Module: {module_name}"),
+            "functions": {}
+        }
+        
+        # Add functions
+        for func_name, func_info in module_info.get("functions", {}).items():
+            response["functions"][func_name] = {
+                "display_name": func_info.get("display_name", func_name),
+                "description": func_info.get("description", f"Function: {func_name}"),
+                "parameters": func_info.get("parameters", {})
+            }
+        
+        print(f"DEBUG: Formatted response: {response}")
+        return jsonify(response)
+    except Exception as e:
+        print(f"DEBUG: Error in API: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/model_generator/preview')
 def model_generator_preview():
@@ -1173,37 +1208,85 @@ def model_generator_preview():
         return Response("CadQuery not available. Please install cadquery to use the model generator.", status=500)
         
     try:
-        # Basic dimensions
-        L = float(request.args.get('L', 160))
-        W = float(request.args.get('W', 100))
-        H = float(request.args.get('H', 60))
-        part = request.args.get('part', 'bottom')
+        # Get module and function from request
+        module_name = request.args.get('module', 'web_box_generator')
+        function_name = request.args.get('function', '')
         
-        # Wall and structure parameters
-        wall = float(request.args.get('wall', 3.0))
-        floor = float(request.args.get('floor', 3.0))
-        corner_fillet = float(request.args.get('corner_fillet', 4.0))
+        # Set default function based on module if not specified
+        if not function_name:
+            if module_name == 'sphere_generator':
+                function_name = 'make_sphere'
+            elif module_name == 'simple_box':
+                function_name = 'make_simple_box'
+            elif module_name in ['web_box_generator', 'rugged_box']:
+                function_name = 'make_simple_hollow_box'
+            else:
+                function_name = 'make_simple_hollow_box'  # fallback
         
-        # Sealing parameters
-        rim_height = float(request.args.get('rim_height', 6.0))
-        tongue_height = float(request.args.get('tongue_height', 2.2))
-        tongue_clearance = float(request.args.get('tongue_clearance', 0.2))
-        groove_depth = float(request.args.get('groove_depth', 2.4))
+        print(f"DEBUG: Preview request - module: {module_name}, function: {function_name}")
         
-        # Lid parameters
-        lid_thickness = float(request.args.get('lid_thickness', 4.0))
-        overhang = float(request.args.get('overhang', 2.0))
+        # Get parameters based on module type
+        if module_name in ['web_box_generator', 'rugged_box']:
+            # Box modules - use L, W, H parameters
+            L = float(request.args.get('L', 160))
+            W = float(request.args.get('W', 100))
+            H = float(request.args.get('H', 60))
+            part = request.args.get('part', 'bottom')
+            
+            # Validate part parameter for box modules
+            if part not in ['bottom', 'lid']:
+                return Response("Part must be 'bottom' or 'lid'", status=400)
+        else:
+            # Non-box modules - set default values
+            L = W = H = 100
+            part = 'model'  # Generic part name for non-box modules
         
-        # Advanced options
-        ribs = request.args.get('ribs') == 'true'
+        # Collect all parameters
+        params = {
+            'L': L, 'W': W, 'H': H,
+            'wall': float(request.args.get('wall', 3.0)),
+            'floor': float(request.args.get('floor', 3.0)),
+            'corner_fillet': float(request.args.get('corner_fillet', 4.0)),
+            'rim_height': float(request.args.get('rim_height', 6.0)),
+            'tongue_height': float(request.args.get('tongue_height', 2.2)),
+            'tongue_clearance': float(request.args.get('tongue_clearance', 0.2)),
+            'groove_depth': float(request.args.get('groove_depth', 2.4)),
+            'lid_thickness': float(request.args.get('lid_thickness', 4.0)),
+            'overhang': float(request.args.get('overhang', 2.0)),
+            'ribs': request.args.get('ribs') == 'true',
+            # New module parameters
+            'radius': float(request.args.get('radius', 5.0)),
+            'length': float(request.args.get('length', 200.0)),
+            'tip_angle': float(request.args.get('tip_angle', 30.0)),
+            'x': float(request.args.get('x', 100.0)),
+            'y': float(request.args.get('y', 100.0)),
+            'z': float(request.args.get('z', 50.0)),
+            'corner_radius': float(request.args.get('corner_radius', 5.0)),
+            'wall_thickness': float(request.args.get('wall_thickness', 3.0)),
+            # Advanced rugged box parameters
+            'length': float(request.args.get('length', 200.0)),
+            'width': float(request.args.get('width', 150.0)),
+            'height': float(request.args.get('height', 80.0)),
+            'floor_thickness': float(request.args.get('floor_thickness', 6.0)),
+            'rim_height': float(request.args.get('rim_height', 8.0)),
+            'lid_thickness': float(request.args.get('lid_thickness', 8.0)),
+            'overhang': float(request.args.get('overhang', 3.0)),
+            'pin_diameter': float(request.args.get('pin_diameter', 4.0)),
+            'catch_depth': float(request.args.get('catch_depth', 8.0)),
+            'hinge_mount_width': float(request.args.get('hinge_mount_width', 20.0)),
+            'latch_mount_width': float(request.args.get('latch_mount_width', 15.0))
+        }
         
         # Validate basic parameters
         if L <= 0 or W <= 0 or H <= 0:
             return Response("Dimensions must be positive", status=400)
         if L > 1000 or W > 1000 or H > 1000:
             return Response("Dimensions too large (max 1000mm)", status=400)
-        if part not in ['bottom', 'lid']:
-            return Response("Part must be 'bottom' or 'lid'", status=400)
+        
+        # Validate part parameter only for box modules
+        if module_name in ['web_box_generator', 'rugged_box']:
+            if part not in ['bottom', 'lid']:
+                return Response("Part must be 'bottom' or 'lid'", status=400)
             
     except ValueError as e:
         return Response(f"Invalid parameters: {str(e)}", status=400)
@@ -1211,25 +1294,46 @@ def model_generator_preview():
         return Response(f"Parameter error: {str(e)}", status=400)
 
     try:
-        if part == 'bottom':
-            # Create simplified preview version - just basic hollow box
-            solid = make_simple_hollow_box(L, W, H, wall, floor, corner_fillet, rim_height)
-        else:  # part == 'lid'
-            solid = make_lid(
-                L, W,
-                wall=wall,
-                lid_thickness=lid_thickness,
-                overhang=overhang,
-                corner_fillet=corner_fillet,
-                groove_depth=groove_depth,
-                groove_clearance=tongue_clearance
-            )
+        print(f"DEBUG: About to generate model - module: {module_name}, function: {function_name}, part: {part}")
+        print(f"DEBUG: Parameters: L={L}, W={W}, H={H}")
+        print(f"DEBUG: Additional params: {params}")
+        
+        # Remove L, W, H from params to avoid duplicate arguments
+        params_clean = {k: v for k, v in params.items() if k not in ['L', 'W', 'H']}
+        print(f"DEBUG: Clean params: {params_clean}")
+        
+        # Generate the model using dynamic module loading
+        solid = generate_model_dynamic(module_name, function_name, part, L, W, H, **params_clean)
+        print(f"DEBUG: Model generated successfully, type: {type(solid)}")
 
         # Export with lower resolution for faster preview
-        data = export_stl_bytes(solid, tol=0.02, ang=0.1)
+        # Use the module's own export function if available, otherwise fallback to web_box_generator
+        try:
+            # Try to get the export function from the same module
+            import importlib.util
+            import os
+            module_path = os.path.join(os.path.dirname(__file__), 'moduls', f"{module_name}.py")
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            if spec is not None and spec.loader is not None:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                if hasattr(module, 'export_stl_bytes'):
+                    data = module.export_stl_bytes(solid, tol=0.02, ang=0.1)
+                else:
+                    data = export_stl_bytes(solid, tol=0.02, ang=0.1)
+            else:
+                data = export_stl_bytes(solid, tol=0.02, ang=0.1)
+        except Exception as e:
+            print(f"DEBUG: Error using module export function, falling back: {e}")
+            data = export_stl_bytes(solid, tol=0.02, ang=0.1)
+        
+        print(f"DEBUG: STL exported successfully, size: {len(data)} bytes")
         return send_file(BytesIO(data), mimetype='application/sla')
         
     except Exception as e:
+        print(f"DEBUG: Error in model generation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return Response(f"STL generation failed: {str(e)}", status=500)
 
 @app.route('/model_generator/generate')
@@ -1239,71 +1343,131 @@ def model_generator_generate():
         return Response("CadQuery not available. Please install cadquery to use the model generator.", status=500)
         
     try:
-        # Basic dimensions
-        L = float(request.args.get('L', 160))
-        W = float(request.args.get('W', 100))
-        H = float(request.args.get('H', 60))
-        part = request.args.get('part', 'bottom')
+        # Get module and function from request
+        module_name = request.args.get('module', 'web_box_generator')
+        function_name = request.args.get('function', '')
         
-        # Wall and structure parameters
-        wall = float(request.args.get('wall', 3.0))
-        floor = float(request.args.get('floor', 3.0))
-        corner_fillet = float(request.args.get('corner_fillet', 4.0))
+        # Set default function based on module if not specified
+        if not function_name:
+            if module_name == 'sphere_generator':
+                function_name = 'make_sphere'
+            elif module_name == 'simple_box':
+                function_name = 'make_simple_box'
+            elif module_name in ['web_box_generator', 'rugged_box']:
+                function_name = 'make_simple_hollow_box'
+            else:
+                function_name = 'make_simple_hollow_box'  # fallback
         
-        # Sealing parameters
-        rim_height = float(request.args.get('rim_height', 6.0))
-        tongue_height = float(request.args.get('tongue_height', 2.2))
-        tongue_clearance = float(request.args.get('tongue_clearance', 0.2))
-        groove_depth = float(request.args.get('groove_depth', 2.4))
+        print(f"DEBUG: Generate request - module: {module_name}, function: {function_name}")
         
-        # Lid parameters
-        lid_thickness = float(request.args.get('lid_thickness', 4.0))
-        overhang = float(request.args.get('overhang', 2.0))
+        # Get parameters based on module type
+        if module_name in ['web_box_generator', 'rugged_box']:
+            # Box modules - use L, W, H parameters
+            L = float(request.args.get('L', 160))
+            W = float(request.args.get('W', 100))
+            H = float(request.args.get('H', 60))
+            part = request.args.get('part', 'bottom')
+        else:
+            # Non-box modules - set default values
+            L = W = H = 100
+            part = 'model'  # Generic part name for non-box modules
         
-        # Advanced options
-        ribs = request.args.get('ribs') == 'true'
+        # Collect all parameters
+        params = {
+            'L': L, 'W': W, 'H': H,
+            'wall': float(request.args.get('wall', 3.0)),
+            'floor': float(request.args.get('floor', 3.0)),
+            'corner_fillet': float(request.args.get('corner_fillet', 4.0)),
+            'rim_height': float(request.args.get('rim_height', 6.0)),
+            'tongue_height': float(request.args.get('tongue_height', 2.2)),
+            'tongue_clearance': float(request.args.get('tongue_clearance', 0.2)),
+            'groove_depth': float(request.args.get('groove_depth', 2.4)),
+            'lid_thickness': float(request.args.get('lid_thickness', 4.0)),
+            'overhang': float(request.args.get('overhang', 2.0)),
+            'ribs': request.args.get('ribs') == 'true',
+            # New module parameters
+            'radius': float(request.args.get('radius', 5.0)),
+            'length': float(request.args.get('length', 200.0)),
+            'tip_angle': float(request.args.get('tip_angle', 30.0)),
+            'x': float(request.args.get('x', 100.0)),
+            'y': float(request.args.get('y', 100.0)),
+            'z': float(request.args.get('z', 50.0)),
+            'corner_radius': float(request.args.get('corner_radius', 5.0)),
+            'wall_thickness': float(request.args.get('wall_thickness', 3.0)),
+            # Advanced rugged box parameters
+            'length': float(request.args.get('length', 200.0)),
+            'width': float(request.args.get('width', 150.0)),
+            'height': float(request.args.get('height', 80.0)),
+            'floor_thickness': float(request.args.get('floor_thickness', 6.0)),
+            'rim_height': float(request.args.get('rim_height', 8.0)),
+            'lid_thickness': float(request.args.get('lid_thickness', 8.0)),
+            'overhang': float(request.args.get('overhang', 3.0)),
+            'pin_diameter': float(request.args.get('pin_diameter', 4.0)),
+            'catch_depth': float(request.args.get('catch_depth', 8.0)),
+            'hinge_mount_width': float(request.args.get('hinge_mount_width', 20.0)),
+            'latch_mount_width': float(request.args.get('latch_mount_width', 15.0))
+        }
         
         # Validate basic parameters
         if L <= 0 or W <= 0 or H <= 0:
             return Response("Dimensions must be positive", status=400)
         if L > 1000 or W > 1000 or H > 1000:
             return Response("Dimensions too large (max 1000mm)", status=400)
-        if part not in ['bottom', 'lid']:
-            return Response("Part must be 'bottom' or 'lid'", status=400)
-            
+        
+        # Validate part parameter only for box modules
+        if module_name in ['web_box_generator', 'rugged_box']:
+            if part not in ['bottom', 'lid']:
+                return Response("Part must be 'bottom' or 'lid'", status=400)
+                
     except ValueError as e:
         return Response(f"Invalid parameters: {str(e)}", status=400)
     except Exception as e:
         return Response(f"Parameter error: {str(e)}", status=400)
 
     try:
-        if part == 'bottom':
-            solid = make_bottom_box(
-                L, W, H,
-                wall=wall,
-                floor=floor,
-                corner_fillet=corner_fillet,
-                rim_height=rim_height,
-                tongue_height=tongue_height,
-                tongue_clearance=tongue_clearance,
-                ribs=ribs
-            )
-        else:  # part == 'lid'
-            solid = make_lid(
-                L, W,
-                wall=wall,
-                lid_thickness=lid_thickness,
-                overhang=overhang,
-                corner_fillet=corner_fillet,
-                groove_depth=groove_depth,
-                groove_clearance=tongue_clearance
-            )
+        print(f"DEBUG: About to generate model - module: {module_name}, function: {function_name}, part: {part}")
+        print(f"DEBUG: Parameters: L={L}, W={W}, H={H}")
+        print(f"DEBUG: Additional params: {params}")
+        
+        # Remove L, W, H from params to avoid duplicate arguments
+        params_clean = {k: v for k, v in params.items() if k not in ['L', 'W', 'H']}
+        print(f"DEBUG: Clean params: {params_clean}")
+        
+        # Generate the model using dynamic module loading
+        solid = generate_model_dynamic(module_name, function_name, part, L, W, H, **params_clean)
+        print(f"DEBUG: Model generated successfully, type: {type(solid)}")
 
-        data = export_stl_bytes(solid)
-        fname = f"rugged_box_{part}.stl"
+        # Export with full resolution for download
+        # Use the module's own export function if available, otherwise fallback to web_box_generator
+        try:
+            # Try to get the export function from the same module
+            import importlib.util
+            import os
+            module_path = os.path.join(os.path.dirname(__file__), 'moduls', f"{module_name}.py")
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            if spec is not None and spec.loader is not None:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                if hasattr(module, 'export_stl_bytes'):
+                    data = module.export_stl_bytes(solid, tol=0.01, ang=0.05)  # Higher resolution for download
+                else:
+                    data = export_stl_bytes(solid, tol=0.01, ang=0.05)
+            else:
+                data = export_stl_bytes(solid, tol=0.01, ang=0.05)
+        except Exception as e:
+            print(f"DEBUG: Error using module export function, falling back: {e}")
+            data = export_stl_bytes(solid, tol=0.01, ang=0.05)
+        
+        print(f"DEBUG: STL exported successfully, size: {len(data)} bytes")
+        
+        # Generate filename based on module and function
+        fname = f"{module_name}_{function_name}_{part}.stl"
         return send_file(BytesIO(data), as_attachment=True, download_name=fname, mimetype='application/sla')
         
     except Exception as e:
+        print(f"DEBUG: Error in model generation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return Response(f"STL generation failed: {str(e)}", status=500)
 
 if __name__ == '__main__':

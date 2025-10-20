@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Rugged Box Generator Module
+Creates rugged box models with advanced sealing features
+"""
+
 import cadquery as cq
 import math
 import argparse

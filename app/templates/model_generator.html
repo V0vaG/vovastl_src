@@ -44,32 +44,6 @@
             background: #f9f9f9;
             position: relative;
         }
-        .preview-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        .preview-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        .preview-btn.active {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .preview-btn:not(.active) {
-            background-color: #e0e0e0;
-            color: #666;
-        }
-        .preview-btn:hover {
-            background-color: #45a049;
-            color: white;
-        }
         .preview-info {
             font-size: 12px;
             color: #666;
@@ -229,7 +203,7 @@
     <div class="main-container">
         <div class="form-container">
             <a href="{{ url_for('main') }}" class="btn-back" style="display: inline-block; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Back to Main</a>
-            <h1>🔧 Rugged Box Generator</h1>
+            <h1>🔧 Model Generator</h1>
             
             {% if not cadquery_available %}
             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
@@ -239,85 +213,218 @@
                 <small>Without CadQuery, you can still view the interface but cannot generate STL files.</small>
             </div>
             {% endif %}
-            
+
             <form id="boxForm">
             <div class="section">
+                <h3>🔧 Module Selection</h3>
+                <div class="form-group">
+                    <label for="module_select">Select Model Type:</label>
+                    <select id="module_select" name="module">
+                        <option value="">Choose a module...</option>
+                        {% for module in available_modules %}
+                        <option value="{{ module.value }}" data-description="{{ module.description }}">
+                            {{ module.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text" id="module_description">Select a module to see available functions and parameters</div>
+                </div>
+                <div class="form-group" id="function_group" style="display: none;">
+                    <label for="function_select">Select Function:</label>
+                    <select id="function_select" name="function">
+                        <option value="">Choose a function...</option>
+                    </select>
+                    <div class="help-text" id="function_description">Select a function to see its parameters</div>
+                </div>
+            </div>
+            <!-- Box Parameters Section -->
+            <div class="section" id="box_parameters_section" style="display: none;">
                 <h3>📏 Basic Dimensions</h3>
                 <div class="form-group">
                     <label for="inner_length">Inner Length (mm):</label>
-                    <input type="number" id="inner_length" name="L" value="160" min="10" max="1000" step="0.1" required>
+                    <input type="number" id="inner_length" name="L" value="160" min="0.1" step="0.1">
                     <div class="help-text">Length of the inner cavity</div>
                 </div>
                 <div class="form-group">
                     <label for="inner_width">Inner Width (mm):</label>
-                    <input type="number" id="inner_width" name="W" value="100" min="10" max="1000" step="0.1" required>
+                    <input type="number" id="inner_width" name="W" value="100" min="0.1" step="0.1">
                     <div class="help-text">Width of the inner cavity</div>
                 </div>
                 <div class="form-group">
                     <label for="inner_height">Inner Height (mm):</label>
-                    <input type="number" id="inner_height" name="H" value="60" min="5" max="500" step="0.1" required>
+                    <input type="number" id="inner_height" name="H" value="60" min="0.1" step="0.1">
                     <div class="help-text">Height of the inner cavity</div>
                 </div>
             </div>
 
-            <div class="section">
+            <!-- Sphere Parameters Section -->
+            <div class="section" id="sphere_parameters_section" style="display: none;">
+                <h3>🌐 Sphere Dimensions</h3>
+                <div class="form-group">
+                    <label for="sphere_radius">Radius (mm):</label>
+                    <input type="number" id="sphere_radius" name="radius" value="10.0" min="0.1" step="0.1">
+                    <div class="help-text">Radius of the sphere</div>
+                </div>
+            </div>
+
+    <!-- Simple Box Parameters Section -->
+    <div class="section" id="simple_box_parameters_section" style="display: none;">
+        <h3>📦 Simple Box Dimensions</h3>
+        <div class="form-group">
+            <label for="box_x">X (Length) (mm):</label>
+            <input type="number" id="box_x" name="x" value="100" min="0.1" step="0.1">
+            <div class="help-text">Length in X direction</div>
+        </div>
+        <div class="form-group">
+            <label for="box_y">Y (Width) (mm):</label>
+            <input type="number" id="box_y" name="y" value="100" min="0.1" step="0.1">
+            <div class="help-text">Width in Y direction</div>
+        </div>
+        <div class="form-group">
+            <label for="box_z">Z (Height) (mm):</label>
+            <input type="number" id="box_z" name="z" value="50" min="0.1" step="0.1">
+            <div class="help-text">Height in Z direction</div>
+        </div>
+        <div class="form-group">
+            <label for="box_corner_radius">Corner Radius (mm):</label>
+            <input type="number" id="box_corner_radius" name="corner_radius" value="5.0" min="0.0" step="0.1">
+            <div class="help-text">Radius of the corner fillets (for rounded box)</div>
+        </div>
+        <div class="form-group">
+            <label for="box_wall_thickness">Wall Thickness (mm):</label>
+            <input type="number" id="box_wall_thickness" name="wall_thickness" value="3.0" min="0.1" step="0.1">
+            <div class="help-text">Thickness of the walls (for hollow box)</div>
+        </div>
+    </div>
+
+    <!-- Advanced Rugged Box Parameters Section -->
+    <div class="section" id="rugged_box_advanced_parameters_section" style="display: none;">
+        <h3>🔧 Advanced Rugged Box Parameters</h3>
+        <div class="form-group">
+            <label for="advanced_length">Length (mm):</label>
+            <input type="number" id="advanced_length" name="length" value="200.0" min="50.0" step="1.0">
+            <div class="help-text">External length of the box</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_width">Width (mm):</label>
+            <input type="number" id="advanced_width" name="width" value="150.0" min="50.0" step="1.0">
+            <div class="help-text">External width of the box</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_height">Height (mm):</label>
+            <input type="number" id="advanced_height" name="height" value="80.0" min="30.0" step="1.0">
+            <div class="help-text">External height of the box</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_wall_thickness">Wall Thickness (mm):</label>
+            <input type="number" id="advanced_wall_thickness" name="wall_thickness" value="4.0" min="2.0" step="0.5">
+            <div class="help-text">Thickness of the side walls</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_floor_thickness">Floor Thickness (mm):</label>
+            <input type="number" id="advanced_floor_thickness" name="floor_thickness" value="6.0" min="3.0" step="0.5">
+            <div class="help-text">Thickness of the bottom floor</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_corner_radius">Corner Radius (mm):</label>
+            <input type="number" id="advanced_corner_radius" name="corner_radius" value="8.0" min="0.0" step="1.0">
+            <div class="help-text">Radius of corner rounding</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_rim_height">Rim Height (mm):</label>
+            <input type="number" id="advanced_rim_height" name="rim_height" value="8.0" min="0.0" step="1.0">
+            <div class="help-text">Height of the sealing rim</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_hinge_mount_width">Hinge Mount Width (mm):</label>
+            <input type="number" id="advanced_hinge_mount_width" name="hinge_mount_width" value="20.0" min="10.0" step="1.0">
+            <div class="help-text">Width of hinge mounting area</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_latch_mount_width">Latch Mount Width (mm):</label>
+            <input type="number" id="advanced_latch_mount_width" name="latch_mount_width" value="15.0" min="10.0" step="1.0">
+            <div class="help-text">Width of latch mounting area</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_lid_thickness">Lid Thickness (mm):</label>
+            <input type="number" id="advanced_lid_thickness" name="lid_thickness" value="8.0" min="4.0" step="0.5">
+            <div class="help-text">Thickness of the lid top</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_overhang">Overhang (mm):</label>
+            <input type="number" id="advanced_overhang" name="overhang" value="3.0" min="0.0" step="0.5">
+            <div class="help-text">Overhang of lid over box walls</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_pin_diameter">Pin Diameter (mm):</label>
+            <input type="number" id="advanced_pin_diameter" name="pin_diameter" value="4.0" min="2.0" step="0.5">
+            <div class="help-text">Diameter of the hinge pin</div>
+        </div>
+        <div class="form-group">
+            <label for="advanced_catch_depth">Catch Depth (mm):</label>
+            <input type="number" id="advanced_catch_depth" name="catch_depth" value="8.0" min="4.0" step="1.0">
+            <div class="help-text">Depth of the catch mechanism</div>
+        </div>
+    </div>
+
+            <div class="section" id="box_wall_section" style="display: none;">
                 <h3>🏗️ Wall & Structure</h3>
                 <div class="form-group">
                     <label for="wall_thickness">Wall Thickness (mm):</label>
-                    <input type="number" id="wall_thickness" name="wall" value="3.0" min="1" max="20" step="0.1">
+                    <input type="number" id="wall_thickness" name="wall" value="3.0" min="0.1" step="0.1">
                     <div class="help-text">Thickness of the side walls</div>
                 </div>
                 <div class="form-group">
                     <label for="floor_thickness">Floor Thickness (mm):</label>
-                    <input type="number" id="floor_thickness" name="floor" value="3.0" min="1" max="20" step="0.1">
+                    <input type="number" id="floor_thickness" name="floor" value="3.0" min="0.1" step="0.1">
                     <div class="help-text">Thickness of the bottom floor</div>
                 </div>
                 <div class="form-group">
                     <label for="corner_fillet">Corner Fillet (mm):</label>
-                    <input type="number" id="corner_fillet" name="corner_fillet" value="4.0" min="0" max="20" step="0.1">
+                    <input type="number" id="corner_fillet" name="corner_fillet" value="4.0" min="0" step="0.1">
                     <div class="help-text">Radius of corner rounding</div>
                 </div>
             </div>
 
-            <div class="section">
+            <div class="section" id="box_sealing_section" style="display: none;">
                 <h3>🔒 Sealing & Fit</h3>
                 <div class="form-group">
                     <label for="rim_height">Rim Height (mm):</label>
-                    <input type="number" id="rim_height" name="rim_height" value="6.0" min="2" max="20" step="0.1">
+                    <input type="number" id="rim_height" name="rim_height" value="6.0" min="0.1" step="0.1">
                     <div class="help-text">Height of the sealing rim on bottom</div>
                 </div>
                 <div class="form-group">
                     <label for="tongue_height">Tongue Height (mm):</label>
-                    <input type="number" id="tongue_height" name="tongue_height" value="2.2" min="1" max="10" step="0.1">
+                    <input type="number" id="tongue_height" name="tongue_height" value="2.2" min="0.1" step="0.1">
                     <div class="help-text">Height of the sealing tongue</div>
                 </div>
                 <div class="form-group">
                     <label for="tongue_clearance">Tongue Clearance (mm):</label>
-                    <input type="number" id="tongue_clearance" name="tongue_clearance" value="0.2" min="0" max="2" step="0.05">
+                    <input type="number" id="tongue_clearance" name="tongue_clearance" value="0.2" min="0" step="0.05">
                     <div class="help-text">Clearance between tongue and groove</div>
                 </div>
                 <div class="form-group">
                     <label for="groove_depth">Groove Depth (mm):</label>
-                    <input type="number" id="groove_depth" name="groove_depth" value="2.4" min="1" max="10" step="0.1">
+                    <input type="number" id="groove_depth" name="groove_depth" value="2.4" min="0.1" step="0.1">
                     <div class="help-text">Depth of the sealing groove in lid</div>
                 </div>
             </div>
 
-            <div class="section">
+            <div class="section" id="box_lid_section" style="display: none;">
                 <h3>🔧 Lid Settings</h3>
                 <div class="form-group">
                     <label for="lid_thickness">Lid Thickness (mm):</label>
-                    <input type="number" id="lid_thickness" name="lid_thickness" value="4.0" min="2" max="20" step="0.1">
+                    <input type="number" id="lid_thickness" name="lid_thickness" value="4.0" min="0.1" step="0.1">
                     <div class="help-text">Thickness of the lid top</div>
                 </div>
                 <div class="form-group">
                     <label for="overhang">Overhang (mm):</label>
-                    <input type="number" id="overhang" name="overhang" value="2.0" min="0" max="10" step="0.1">
+                    <input type="number" id="overhang" name="overhang" value="2.0" min="0" step="0.1">
                     <div class="help-text">Overhang of lid over box walls</div>
                 </div>
             </div>
 
-            <div class="section">
+            <div class="section" id="box_advanced_section" style="display: none;">
                 <h3>⚙️ Advanced Options</h3>
                 <div class="form-group">
                     <div class="checkbox-group">
@@ -333,20 +440,9 @@
                 <p>Generating STL file...</p>
             </div>
 
-            <div class="button-group">
-                <button type="button" class="btn-bottom" onclick="generateSTL('bottom')">
-                    📦 Generate Bottom
-                </button>
-                <button type="button" class="btn-lid" onclick="generateSTL('lid')">
-                    🔒 Generate Lid
-                </button>
-                <button type="button" class="btn-both" onclick="generateBoth()">
-                    📦🔒 Generate Both
-                </button>
-            </div>
             
             <div class="button-group" style="margin-top: 15px;">
-                <button type="button" class="btn-reset" onclick="resetForm()">
+                <button type="button" class="btn-reset" id="reset-form-btn">
                     🔄 Reset to Defaults
                 </button>
             </div>
@@ -355,16 +451,17 @@
         
         <div class="preview-container">
             <h2>👁️ 3D Preview</h2>
-            <div class="preview-controls">
-                <button class="preview-btn active" onclick="showPreview('bottom')">📦 Bottom</button>
-                <button class="preview-btn" onclick="showPreview('lid')">🔒 Lid</button>
-                <button class="preview-btn" onclick="showPreview('both')">📦🔒 Both</button>
-                <button class="preview-btn" onclick="updatePreview()">🔄 Refresh</button>
-                <button class="preview-btn" onclick="toggleWireframe()">🔲 Wireframe</button>
+            <div style="margin-bottom: 15px;">
+                <button type="button" id="refresh-preview-btn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    🔄 Refresh Preview
+                </button>
+                <button type="button" id="download-stl-btn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    💾 Download STL
+                </button>
             </div>
             <div id="preview-window" class="preview-window">
                 <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
-                    Click "Refresh" to generate preview
+                    Select a module and function to generate preview
                 </div>
             </div>
             <div class="preview-info">
@@ -375,11 +472,16 @@
     </div>
 
     <script>
+        console.log('JavaScript file loaded');
+        alert('JavaScript is working!');
+        
         // Global variables for 3D preview
         let scene, camera, renderer, controls;
         let currentPreview = 'bottom';
         let wireframeMode = false;
         let currentMeshes = [];
+        let currentModuleInfo = null;
+        let lastPreviewParams = null; // Store the last preview parameters
         
         function initPreview() {
             const container = document.getElementById('preview-window');
@@ -422,8 +524,116 @@
             directionalLight.shadow.mapSize.height = 2048;
             scene.add(directionalLight);
             
+            // Add grid floor with metrics
+            addGridFloor();
+            
             // Start render loop
             animate();
+        }
+        
+        function addGridFloor() {
+            // Create a grid helper for the floor
+            const gridSize = 200; // 200mm grid
+            const gridDivisions = 20; // 20 divisions = 10mm per division
+            const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0x444444);
+            gridHelper.position.y = -0.1; // Slightly below the model
+            scene.add(gridHelper);
+            
+            // Add axis helpers for reference
+            const axesHelper = new THREE.AxesHelper(50);
+            scene.add(axesHelper);
+            
+            // Add measurement markers
+            addMeasurementMarkers();
+        }
+        
+        function addMeasurementMarkers() {
+            // Create measurement markers at key positions
+            const markerPositions = [
+                { x: 0, y: 0, z: 0, label: "Origin" },
+                { x: 50, y: 0, z: 0, label: "50mm" },
+                { x: 100, y: 0, z: 0, label: "100mm" },
+                { x: 150, y: 0, z: 0, label: "150mm" },
+                { x: 0, y: 0, z: 50, label: "50mm" },
+                { x: 0, y: 0, z: 100, label: "100mm" },
+                { x: 0, y: 0, z: 150, label: "150mm" }
+            ];
+            
+            markerPositions.forEach(pos => {
+                // Create a small sphere marker
+                const markerGeometry = new THREE.SphereGeometry(1, 8, 6);
+                const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                marker.position.set(pos.x, pos.y, pos.z);
+                scene.add(marker);
+                
+                // Add text label (simplified - just a small cube for now)
+                const labelGeometry = new THREE.BoxGeometry(2, 2, 2);
+                const labelMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                label.position.set(pos.x, pos.y + 5, pos.z);
+                scene.add(label);
+            });
+        }
+        
+        function updateGridFloor(model) {
+            // Remove existing grid if it exists
+            const existingGrid = scene.getObjectByName('dynamicGrid');
+            if (existingGrid) {
+                scene.remove(existingGrid);
+            }
+            
+            // Get model bounding box
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Calculate appropriate grid size (slightly larger than model)
+            const gridSize = Math.ceil(maxDim / 10) * 10; // Round up to nearest 10mm
+            const gridDivisions = Math.max(10, Math.floor(gridSize / 10)); // At least 10 divisions
+            
+            // Create new grid
+            const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0x444444);
+            gridHelper.name = 'dynamicGrid';
+            gridHelper.position.y = -0.1;
+            scene.add(gridHelper);
+            
+            // Add dimension markers
+            addDimensionMarkers(size, gridSize);
+        }
+        
+        function addDimensionMarkers(modelSize, gridSize) {
+            // Remove existing markers
+            const existingMarkers = scene.children.filter(child => child.name && child.name.startsWith('dimensionMarker'));
+            existingMarkers.forEach(marker => scene.remove(marker));
+            
+            // Add markers at key positions
+            const halfSize = gridSize / 2;
+            const markers = [
+                { pos: [halfSize, 0, 0], label: `${Math.round(modelSize.x)}mm`, color: 0xff0000 },
+                { pos: [0, 0, halfSize], label: `${Math.round(modelSize.z)}mm`, color: 0x00ff00 },
+                { pos: [0, halfSize, 0], label: `${Math.round(modelSize.y)}mm`, color: 0x0000ff }
+            ];
+            
+            markers.forEach((marker, index) => {
+                // Create marker sphere
+                const markerGeometry = new THREE.SphereGeometry(2, 8, 6);
+                const markerMaterial = new THREE.MeshBasicMaterial({ color: marker.color });
+                const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+                markerMesh.position.set(marker.pos[0], marker.pos[1], marker.pos[2]);
+                markerMesh.name = `dimensionMarker_${index}`;
+                scene.add(markerMesh);
+                
+                // Create dimension line
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(marker.pos[0], marker.pos[1], marker.pos[2])
+                ]);
+                const lineMaterial = new THREE.LineBasicMaterial({ color: marker.color, linewidth: 2 });
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                line.name = `dimensionLine_${index}`;
+                scene.add(line);
+            });
         }
         
         function animate() {
@@ -432,19 +642,9 @@
             renderer.render(scene, camera);
         }
         
-        function showPreview(part) {
-            currentPreview = part;
-            
-            // Update button states
-            document.querySelectorAll('.preview-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            updatePreview();
-        }
         
         function updatePreview() {
+            console.log('updatePreview called');
             {% if not cadquery_available %}
             document.getElementById('preview-status').textContent = 'CadQuery not available - cannot generate preview';
             return;
@@ -465,6 +665,32 @@
                     params.append(key, value);
                 }
             }
+            
+            // Add module and function parameters
+            const moduleSelect = document.getElementById('module_select');
+            const functionSelect = document.getElementById('function_select');
+            console.log('Module value:', moduleSelect.value);
+            console.log('Function value:', functionSelect.value);
+            if (moduleSelect.value) {
+                params.append('module', moduleSelect.value);
+            }
+            if (functionSelect.value) {
+                params.append('function', functionSelect.value);
+            } else {
+                console.log('No function selected, using default');
+                // For sphere_generator, use make_sphere as default
+                if (moduleSelect.value === 'sphere_generator') {
+                    params.append('function', 'make_sphere');
+                } else if (moduleSelect.value === 'simple_box') {
+                    params.append('function', 'make_simple_box');
+                } else if (moduleSelect.value === 'web_box_generator') {
+                    params.append('function', 'make_simple_hollow_box');
+                }
+            }
+            console.log('Preview params:', params.toString());
+            
+            // Store the parameters for download
+            lastPreviewParams = params.toString();
             
             // Clear existing models
             currentMeshes.forEach(mesh => {
@@ -537,6 +763,9 @@
                 // Store references for wireframe toggle
                 currentMeshes.push(solidMesh, wireframeMesh);
                 
+                // Update grid floor based on model dimensions
+                updateGridFloor(solidMesh);
+                
                 // Auto-fit camera
                 const box = new THREE.Box3().setFromObject(solidMesh);
                 const size = box.getSize(new THREE.Vector3());
@@ -584,6 +813,16 @@
                 } else {
                     params.append(key, value);
                 }
+            }
+            
+            // Add module and function parameters
+            const moduleSelect = document.getElementById('module_select');
+            const functionSelect = document.getElementById('function_select');
+            if (moduleSelect.value) {
+                params.append('module', moduleSelect.value);
+            }
+            if (functionSelect.value) {
+                params.append('function', functionSelect.value);
             }
             
             const url = `/model_generator/generate?${params.toString()}`;
@@ -659,27 +898,296 @@
 
         // Add some interactivity
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired - JavaScript is running');
+            
             // Initialize 3D preview
             initPreview();
+            
+            // Debug: Check if modules are available
+            const moduleSelect = document.getElementById('module_select');
+            console.log('Available modules in dropdown:', moduleSelect.options.length);
+            for (let i = 0; i < moduleSelect.options.length; i++) {
+                console.log(`Option ${i}: ${moduleSelect.options[i].text} (${moduleSelect.options[i].value})`);
+            }
+            
+            // Add event listeners for debug buttons
+            try {
+                console.log('Looking for buttons...');
+                const refreshBtn = document.getElementById('refresh-preview-btn');
+                console.log('Refresh button found:', refreshBtn);
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', function() {
+                        console.log('Refresh Preview button clicked');
+                        updatePreview();
+                    });
+                    console.log('Event listener added to refresh button');
+                } else {
+                    console.error('Refresh Preview button not found');
+                }
+            } catch (error) {
+                console.error('Error setting up refresh button:', error);
+            }
+            
+            // Test if functions are defined
+            console.log('Testing function definitions:');
+            console.log('updatePreview function:', typeof updatePreview);
+            console.log('downloadSTL function:', typeof downloadSTL);
+            console.log('resetForm function:', typeof resetForm);
+            
+            const downloadBtn = document.getElementById('download-stl-btn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function() {
+                    console.log('Download STL button clicked');
+                    downloadSTL();
+                });
+            } else {
+                console.error('Download STL button not found');
+            }
+            
+            const resetBtn = document.getElementById('reset-form-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    console.log('Reset Form button clicked');
+                    resetForm();
+                });
+            } else {
+                console.error('Reset Form button not found');
+            }
             
             const inputs = document.querySelectorAll('input[type="number"]');
             inputs.forEach(input => {
                 input.addEventListener('input', function() {
                     if (this.value < this.min) this.value = this.min;
-                    if (this.value > this.max) this.value = this.max;
+                    if (this.max && this.value > this.max) this.value = this.max;
                 });
             });
             
-            // Auto-update preview when form changes
-            const form = document.getElementById('boxForm');
-            form.addEventListener('input', function() {
-                // Debounce the preview update
-                clearTimeout(window.previewTimeout);
-                window.previewTimeout = setTimeout(() => {
-                    if (scene) updatePreview();
-                }, 1000);
-            });
+        }); // Close DOMContentLoaded function
+        
+        // Auto-update preview when form changes (disabled for now to prevent parameter changes)
+        // const form = document.getElementById('boxForm');
+        // form.addEventListener('input', function() {
+        //     // Debounce the preview update
+        //     clearTimeout(window.previewTimeout);
+        //     window.previewTimeout = setTimeout(() => {
+        //         if (scene) updatePreview();
+        //     }, 1000);
+        // });
+        
+        // Auto-update preview when module or function selection changes
+        document.getElementById('module_select').addEventListener('change', function() {
+            console.log('Module select change event triggered');
+            loadModuleFunctions();
+            clearTimeout(window.previewTimeout);
+            window.previewTimeout = setTimeout(() => {
+                if (scene) updatePreview();
+            }, 500);
         });
+        
+        document.getElementById('function_select').addEventListener('change', function() {
+            console.log('Function select change event triggered');
+            loadFunctionParameters();
+            clearTimeout(window.previewTimeout);
+            window.previewTimeout = setTimeout(() => {
+                if (scene) updatePreview();
+            }, 500);
+        });
+
+        // Dynamic module loading functions
+        function loadModuleFunctions() {
+            console.log('loadModuleFunctions called');
+            const moduleSelect = document.getElementById('module_select');
+            const functionGroup = document.getElementById('function_group');
+            const moduleDescription = document.getElementById('module_description');
+            
+            console.log('Selected module:', moduleSelect.value);
+            
+            if (!moduleSelect.value) {
+                functionGroup.style.display = 'none';
+                moduleDescription.textContent = 'Select a module to see available functions and parameters';
+                return;
+            }
+            
+            // Update module description
+            const selectedOption = moduleSelect.options[moduleSelect.selectedIndex];
+            moduleDescription.textContent = selectedOption.getAttribute('data-description') || 'Module selected';
+            
+            // Load module functions via API
+            console.log(`Fetching module functions for: ${moduleSelect.value}`);
+            fetch(`/api/module/${moduleSelect.value}`)
+                .then(response => {
+                    console.log('API response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('API response data:', data);
+                    if (data.error) {
+                        console.error('Error loading module:', data.error);
+                        return;
+                    }
+                    
+                    currentModuleInfo = data;
+                    populateFunctionSelect(data.functions);
+                    functionGroup.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading module functions:', error);
+                });
+        }
+        
+        function populateFunctionSelect(functions) {
+            console.log('populateFunctionSelect called with:', functions);
+            const functionSelect = document.getElementById('function_select');
+            const functionDescription = document.getElementById('function_description');
+            
+            // Clear existing options
+            functionSelect.innerHTML = '<option value="">Choose a function...</option>';
+            
+            // Add function options
+            for (const [funcName, funcInfo] of Object.entries(functions)) {
+                console.log(`Adding function: ${funcName} -> ${funcInfo.display_name}`);
+                const option = document.createElement('option');
+                option.value = funcName;
+                option.textContent = funcInfo.display_name;
+                option.setAttribute('data-description', funcInfo.description);
+                functionSelect.appendChild(option);
+            }
+            
+            functionDescription.textContent = 'Select a function to see its parameters';
+        }
+        
+        function loadFunctionParameters() {
+            console.log('loadFunctionParameters called');
+            const functionSelect = document.getElementById('function_select');
+            const functionDescription = document.getElementById('function_description');
+            const moduleSelect = document.getElementById('module_select');
+            
+            console.log('Function value:', functionSelect.value);
+            console.log('Current module info:', currentModuleInfo);
+            
+            if (!functionSelect.value || !currentModuleInfo) {
+                functionDescription.textContent = 'Select a function to see its parameters';
+                hideAllParameterSections();
+                return;
+            }
+            
+            // Update function description
+            const selectedOption = functionSelect.options[functionSelect.selectedIndex];
+            functionDescription.textContent = selectedOption.getAttribute('data-description') || 'Function selected';
+            
+            // Show appropriate parameter sections based on selected module
+            console.log('Showing parameter sections for module:', moduleSelect.value);
+            showParameterSectionsForModule(moduleSelect.value);
+            
+            console.log('Selected function:', functionSelect.value);
+            console.log('Function info:', currentModuleInfo.functions[functionSelect.value]);
+        }
+        
+        function hideAllParameterSections() {
+            const sections = [
+                'box_parameters_section',
+                'box_wall_section', 
+                'box_sealing_section',
+                'box_lid_section',
+                'box_advanced_section',
+                'sphere_parameters_section',
+                'simple_box_parameters_section',
+                'rugged_box_advanced_parameters_section'
+            ];
+            
+            sections.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            });
+        }
+        
+        function showParameterSectionsForModule(moduleName) {
+            console.log('showParameterSectionsForModule called with:', moduleName);
+            // Hide all sections first
+            hideAllParameterSections();
+            
+            // Show sections based on module type
+            switch(moduleName) {
+                case 'web_box_generator':
+                case 'rugged_box':
+                    console.log('Showing box parameters');
+                    // Show all box-related sections
+                    document.getElementById('box_parameters_section').style.display = 'block';
+                    document.getElementById('box_wall_section').style.display = 'block';
+                    document.getElementById('box_sealing_section').style.display = 'block';
+                    document.getElementById('box_lid_section').style.display = 'block';
+                    document.getElementById('box_advanced_section').style.display = 'block';
+                    break;
+                    
+                case 'sphere_generator':
+                    console.log('Showing sphere parameters');
+                    // Show sphere parameters
+                    document.getElementById('sphere_parameters_section').style.display = 'block';
+                    break;
+                    
+                case 'simple_box':
+                    console.log('Showing simple box parameters');
+                    // Show simple box parameters
+                    document.getElementById('simple_box_parameters_section').style.display = 'block';
+                    break;
+                    
+                case 'rugged_box_advanced':
+                    console.log('Showing advanced rugged box parameters');
+                    // Show advanced rugged box parameters
+                    document.getElementById('rugged_box_advanced_parameters_section').style.display = 'block';
+                    break;
+                    
+                default:
+                    console.log('Unknown module:', moduleName);
+                    break;
+            }
+        }
+        
+        function downloadSTL() {
+            console.log('downloadSTL called');
+            {% if not cadquery_available %}
+            alert('CadQuery not available - cannot generate STL files');
+            return;
+            {% endif %}
+            
+            const statusEl = document.getElementById('preview-status');
+            
+            // Check if we have preview parameters
+            if (!lastPreviewParams) {
+                alert('Please generate a preview first by clicking "Refresh Preview"');
+                statusEl.textContent = 'Ready to preview';
+                return;
+            }
+            
+            statusEl.textContent = 'Generating STL for download...';
+            
+            // Get module and function for filename
+            const moduleSelect = document.getElementById('module_select');
+            const functionSelect = document.getElementById('function_select');
+            
+            // Generate filename based on module and function
+            const moduleName = moduleSelect.value || 'model';
+            const functionName = functionSelect.value || 'default';
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `${moduleName}_${functionName}_${timestamp}.stl`;
+            
+            console.log('Download params (from last preview):', lastPreviewParams);
+            console.log('Download filename:', filename);
+            
+            // Create download link using the exact same parameters as the last preview
+            const downloadUrl = '/model_generator/generate?' + lastPreviewParams;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            statusEl.textContent = 'STL download started';
+        }
     </script>
 </body>
 </html>
