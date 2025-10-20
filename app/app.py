@@ -1214,7 +1214,7 @@ def model_generator_preview():
         if part == 'bottom':
             # Create simplified preview version - just basic hollow box
             solid = make_simple_hollow_box(L, W, H, wall, floor, corner_fillet, rim_height)
-        elif part == 'lid':
+        else:  # part == 'lid'
             solid = make_lid(
                 L, W,
                 wall=wall,
@@ -1224,8 +1224,6 @@ def model_generator_preview():
                 groove_depth=groove_depth,
                 groove_clearance=tongue_clearance
             )
-        else:
-            return Response("Part must be 'bottom' or 'lid'", status=400)
 
         # Export with lower resolution for faster preview
         data = export_stl_bytes(solid, tol=0.02, ang=0.1)
@@ -1290,7 +1288,7 @@ def model_generator_generate():
                 tongue_clearance=tongue_clearance,
                 ribs=ribs
             )
-        elif part == 'lid':
+        else:  # part == 'lid'
             solid = make_lid(
                 L, W,
                 wall=wall,
@@ -1300,8 +1298,6 @@ def model_generator_generate():
                 groove_depth=groove_depth,
                 groove_clearance=tongue_clearance
             )
-        else:
-            return Response("Part must be 'bottom' or 'lid'", status=400)
 
         data = export_stl_bytes(solid)
         fname = f"rugged_box_{part}.stl"
