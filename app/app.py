@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, url_for, flash, session, jsonify, flash, send_from_directory, send_file
+from flask import Flask, render_template, redirect, request, url_for, flash, session, jsonify, flash, send_from_directory, send_file, Response
 import json
 import os
 import requests
@@ -10,6 +10,14 @@ import shutil
 from io import BytesIO
 from datetime import datetime 
 import random
+import math
+
+# Try to import CadQuery for model generation
+try:
+    import cadquery as cq
+    CADQUERY_AVAILABLE = True
+except ImportError:
+    CADQUERY_AVAILABLE = False
 
 
 app = Flask(__name__)
@@ -899,6 +907,408 @@ def search():
                     })
 
     return render_template("search.html", query=query, results=results)
+
+# -----------------------------
+# CadQuery modeling functions (if available)
+# -----------------------------
+
+def make_simple_hollow_box(inner_len, inner_wid, inner_h, wall=3.0, floor=3.0, corner_fillet=4.0, rim_height=6.0):
+    """
+    Creates a simple hollow box for preview - no bosses, tongue, or other features
+    Just a basic hollow box to show the interior space clearly
+    """
+    if not CADQUERY_AVAILABLE:
+        raise ImportError("CadQuery not available")
+        
+    outer_len = inner_len + 2 * wall
+    outer_wid = inner_wid + 2 * wall
+    outer_h = floor + inner_h + rim_height  # Include rim height for accurate preview
+
+    # Outer body
+    body = (
+        cq.Workplane("XY")
+        .box(outer_len, outer_wid, outer_h, centered=(True, True, False))
+    )
+    if corner_fillet > 0:
+        body = body.edges("|Z").fillet(corner_fillet)
+
+    # Hollow out - just basic hollowing
+    inner = (
+        cq.Workplane("XY")
+        .box(inner_len, inner_wid, inner_h, centered=(True, True, False))
+        .translate((0, 0, floor))
+    )
+    body = body.cut(inner)
+
+    return body
+
+def make_bottom_box(
+    inner_len, inner_wid, inner_h,
+    wall=3.0, floor=3.0,
+    corner_fillet=4.0,
+    rim_height=6.0,
+    tongue_height=2.2,
+    tongue_clearance=0.2,
+    screw_d=3.2,
+    screw_csink_d=6.0,
+    screw_csink_angle=82,
+    boss_outer_d=2.0,  # Much smaller bosses
+    boss_h=3.0,        # Much shorter bosses
+    boss_core_d=1.0,   # Much smaller pilot holes
+    ribs=False,
+    rib_thickness=2.0,
+    rib_pitch=20.0,
+):
+    """
+    Creates the bottom box with all features
+    """
+    if not CADQUERY_AVAILABLE:
+        raise ImportError("CadQuery not available")
+        
+    outer_len = inner_len + 2 * wall
+    outer_wid = inner_wid + 2 * wall
+    outer_h   = floor + inner_h + rim_height
+
+    # Outer body
+    body = (
+        cq.Workplane("XY")
+        .box(outer_len, outer_wid, outer_h, centered=(True, True, False))
+    )
+    if corner_fillet > 0:
+        body = body.edges("|Z").fillet(corner_fillet)
+
+    # Hollow out - leave floor + walls + upper rim
+    cavity_h = inner_h + rim_height
+    inner = (
+        cq.Workplane("XY")
+        .box(inner_len, inner_wid, cavity_h, centered=(True, True, False))
+        .translate((0, 0, floor))
+    )
+    body = body.cut(inner)
+
+    # Sealing tongue (tongue) - protrudes from rim inward
+    # Only add tongue for larger boxes to preserve interior space
+    if inner_len > 60 and inner_wid > 40:
+        tongue_len = inner_len - 2 * tongue_clearance
+        tongue_wid = inner_wid - 2 * tongue_clearance
+        tongue = (
+            cq.Workplane("XY")
+            .box(tongue_len, tongue_wid, tongue_height, centered=(True, True, False))
+            .translate((0, 0, floor + inner_h))  # at top of inner cavity
+        )
+        # Break corners slightly on tongue to prevent friction
+        tongue = tongue.edges("|Z").fillet(min(0.6, max(0.0, corner_fillet/4)))
+        body = body.union(tongue)
+
+    # Bosses for corners (bottom): four bosses at inner corners, with pilot hole
+    # Make bosses smaller and position them better to preserve interior space
+    boss_offset_x = inner_len/2 - 8  # Closer to walls but still safe
+    boss_offset_y = inner_wid/2 - 8
+    boss_centers = [
+        (+boss_offset_x, +boss_offset_y),
+        (+boss_offset_x, -boss_offset_y),
+        (-boss_offset_x, +boss_offset_y),
+        (-boss_offset_x, -boss_offset_y),
+    ]
+    
+    # Only add bosses if the box is large enough
+    if inner_len > 80 and inner_wid > 60:
+        bosses = cq.Workplane("XY")
+        for (x, y) in boss_centers:
+            bosses = bosses.union(
+                cq.Workplane("XY")
+                .workplane(offset=floor)
+                .center(x, y)
+                .cylinder(boss_h, boss_outer_d/2.0)
+            )
+        body = body.union(bosses)
+
+        # Pilot holes in bosses (for M3 plastic threading or hot insert after drilling)
+        for (x, y) in boss_centers:
+            pilot_hole = (
+                cq.Workplane("XY")
+                .workplane(offset=floor)
+                .center(x, y)
+                .cylinder(boss_h+1, boss_core_d/2.0)
+            )
+            body = body.cut(pilot_hole)
+
+    # Optional strengthening ribs on floor
+    if ribs:
+        # Rib grid along X and Y
+        # Along X
+        y = -inner_wid/2 + rib_pitch
+        while y < inner_wid/2 - rib_pitch/2:
+            rib = (
+                cq.Workplane("XY")
+                .workplane(offset=floor + 0.01)
+                .center(0, y)
+                .rect(inner_len - 2*8, rib_thickness)
+                .extrude( min(8.0, inner_h/3) )
+            )
+            body = body.union(rib)
+            y += rib_pitch
+        # Along Y
+        x = -inner_len/2 + rib_pitch
+        while x < inner_len/2 - rib_pitch/2:
+            rib = (
+                cq.Workplane("XY")
+                .workplane(offset=floor + 0.01)
+                .center(x, 0)
+                .rect(rib_thickness, inner_wid - 2*8)
+                .extrude( min(8.0, inner_h/3) )
+            )
+            body = body.union(rib)
+            x += rib_pitch
+
+    return body
+
+def make_lid(
+    inner_len, inner_wid,
+    wall=3.0, lid_thickness=4.0,
+    overhang=2.0,            # "rim" that covers the bottom's wall
+    corner_fillet=4.0,
+    groove_depth=2.4,        # seal groove depth
+    groove_clearance=0.25,   # clearance between bottom tongue and lid groove
+    screw_d=3.2,             # screw hole in lid (clearance)
+    screw_csink_d=6.0,       # countersink diameter
+    screw_csink_angle=82,    # countersink angle
+):
+    """
+    Creates the lid with sealing groove and screw holes
+    """
+    if not CADQUERY_AVAILABLE:
+        raise ImportError("CadQuery not available")
+        
+    outer_len = inner_len + 2 * (wall + overhang)
+    outer_wid = inner_wid + 2 * (wall + overhang)
+    height    = lid_thickness + wall  # including margin for seal groove
+
+    lid = (
+        cq.Workplane("XY")
+        .box(outer_len, outer_wid, height, centered=(True, True, False))
+    )
+    if corner_fillet > 0:
+        lid = lid.edges("|Z").fillet(corner_fillet)
+
+    # Hollow out to create "cap" - that sits on box walls
+    inner_cap_len = inner_len + 2 * wall + 0.3  # small tolerance
+    inner_cap_wid = inner_wid + 2 * wall + 0.3
+    inner_cap_h   = height - lid_thickness + 0.2
+
+    cavity = (
+        cq.Workplane("XY")
+        .box(inner_cap_len, inner_cap_wid, inner_cap_h, centered=(True, True, False))
+        .translate((0, 0, lid_thickness))  # leave top plate with lid_thickness thickness
+    )
+    lid = lid.cut(cavity)
+
+    # Seal groove - slightly larger than bottom tongue
+    groove_len = inner_len - 2 * groove_clearance
+    groove_wid = inner_wid - 2 * groove_clearance
+    groove = (
+        cq.Workplane("XY")
+        .box(groove_len, groove_wid, groove_depth, centered=(True, True, False))
+        .translate((0, 0, lid_thickness - groove_depth + 0.2))
+    )
+    lid = lid.cut(groove)
+
+    # Countersunk screw holes (4 corners)
+    # Set positions relative to lid rim
+    hole_offset_x = (inner_len/2) + wall - 8
+    hole_offset_y = (inner_wid/2) + wall - 8
+    hole_centers = [
+        (+hole_offset_x, +hole_offset_y),
+        (+hole_offset_x, -hole_offset_y),
+        (-hole_offset_x, +hole_offset_y),
+        (-hole_offset_x, -hole_offset_y),
+    ]
+
+    # Holes through entire lid
+    for (x, y) in hole_centers:
+        lid = (
+            lid.faces(">Z").workplane(centerOption="CenterOfBoundBox")
+            .center(x, y)
+            .cskHole(screw_d, screw_csink_d, screw_csink_angle, depth=height+1)
+        )
+
+    return lid
+
+def export_stl_bytes(solid, tol=0.02, ang=0.2) -> bytes:
+    """
+    Export CadQuery solid to STL bytes
+    """
+    if not CADQUERY_AVAILABLE:
+        raise ImportError("CadQuery not available")
+        
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp_file:
+        tmp_path = tmp_file.name
+    
+    try:
+        # Export to temporary file
+        cq.exporters.export(solid, tmp_path, exportType='STL', tolerance=tol, angularTolerance=ang)
+        
+        # Read the file content
+        with open(tmp_path, 'rb') as f:
+            data = f.read()
+        
+        return data
+    finally:
+        # Clean up temporary file
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+@app.route('/model_generator')
+def model_generator():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('model_generator.html', username=session['user_id'], role=session['role'], cadquery_available=CADQUERY_AVAILABLE)
+
+@app.route('/model_generator/preview')
+def model_generator_preview():
+    """Generate STL for preview (not download) - simplified for better visualization"""
+    if not CADQUERY_AVAILABLE:
+        return Response("CadQuery not available. Please install cadquery to use the model generator.", status=500)
+        
+    try:
+        # Basic dimensions
+        L = float(request.args.get('L', 160))
+        W = float(request.args.get('W', 100))
+        H = float(request.args.get('H', 60))
+        part = request.args.get('part', 'bottom')
+        
+        # Wall and structure parameters
+        wall = float(request.args.get('wall', 3.0))
+        floor = float(request.args.get('floor', 3.0))
+        corner_fillet = float(request.args.get('corner_fillet', 4.0))
+        
+        # Sealing parameters
+        rim_height = float(request.args.get('rim_height', 6.0))
+        tongue_height = float(request.args.get('tongue_height', 2.2))
+        tongue_clearance = float(request.args.get('tongue_clearance', 0.2))
+        groove_depth = float(request.args.get('groove_depth', 2.4))
+        
+        # Lid parameters
+        lid_thickness = float(request.args.get('lid_thickness', 4.0))
+        overhang = float(request.args.get('overhang', 2.0))
+        
+        # Advanced options
+        ribs = request.args.get('ribs') == 'true'
+        
+        # Validate basic parameters
+        if L <= 0 or W <= 0 or H <= 0:
+            return Response("Dimensions must be positive", status=400)
+        if L > 1000 or W > 1000 or H > 1000:
+            return Response("Dimensions too large (max 1000mm)", status=400)
+        if part not in ['bottom', 'lid']:
+            return Response("Part must be 'bottom' or 'lid'", status=400)
+            
+    except ValueError as e:
+        return Response(f"Invalid parameters: {str(e)}", status=400)
+    except Exception as e:
+        return Response(f"Parameter error: {str(e)}", status=400)
+
+    try:
+        if part == 'bottom':
+            # Create simplified preview version - just basic hollow box
+            solid = make_simple_hollow_box(L, W, H, wall, floor, corner_fillet, rim_height)
+        elif part == 'lid':
+            solid = make_lid(
+                L, W,
+                wall=wall,
+                lid_thickness=lid_thickness,
+                overhang=overhang,
+                corner_fillet=corner_fillet,
+                groove_depth=groove_depth,
+                groove_clearance=tongue_clearance
+            )
+        else:
+            return Response("Part must be 'bottom' or 'lid'", status=400)
+
+        # Export with lower resolution for faster preview
+        data = export_stl_bytes(solid, tol=0.02, ang=0.1)
+        return send_file(BytesIO(data), mimetype='application/sla')
+        
+    except Exception as e:
+        return Response(f"STL generation failed: {str(e)}", status=500)
+
+@app.route('/model_generator/generate')
+def model_generator_generate():
+    """Generate full STL file for download"""
+    if not CADQUERY_AVAILABLE:
+        return Response("CadQuery not available. Please install cadquery to use the model generator.", status=500)
+        
+    try:
+        # Basic dimensions
+        L = float(request.args.get('L', 160))
+        W = float(request.args.get('W', 100))
+        H = float(request.args.get('H', 60))
+        part = request.args.get('part', 'bottom')
+        
+        # Wall and structure parameters
+        wall = float(request.args.get('wall', 3.0))
+        floor = float(request.args.get('floor', 3.0))
+        corner_fillet = float(request.args.get('corner_fillet', 4.0))
+        
+        # Sealing parameters
+        rim_height = float(request.args.get('rim_height', 6.0))
+        tongue_height = float(request.args.get('tongue_height', 2.2))
+        tongue_clearance = float(request.args.get('tongue_clearance', 0.2))
+        groove_depth = float(request.args.get('groove_depth', 2.4))
+        
+        # Lid parameters
+        lid_thickness = float(request.args.get('lid_thickness', 4.0))
+        overhang = float(request.args.get('overhang', 2.0))
+        
+        # Advanced options
+        ribs = request.args.get('ribs') == 'true'
+        
+        # Validate basic parameters
+        if L <= 0 or W <= 0 or H <= 0:
+            return Response("Dimensions must be positive", status=400)
+        if L > 1000 or W > 1000 or H > 1000:
+            return Response("Dimensions too large (max 1000mm)", status=400)
+        if part not in ['bottom', 'lid']:
+            return Response("Part must be 'bottom' or 'lid'", status=400)
+            
+    except ValueError as e:
+        return Response(f"Invalid parameters: {str(e)}", status=400)
+    except Exception as e:
+        return Response(f"Parameter error: {str(e)}", status=400)
+
+    try:
+        if part == 'bottom':
+            solid = make_bottom_box(
+                L, W, H,
+                wall=wall,
+                floor=floor,
+                corner_fillet=corner_fillet,
+                rim_height=rim_height,
+                tongue_height=tongue_height,
+                tongue_clearance=tongue_clearance,
+                ribs=ribs
+            )
+        elif part == 'lid':
+            solid = make_lid(
+                L, W,
+                wall=wall,
+                lid_thickness=lid_thickness,
+                overhang=overhang,
+                corner_fillet=corner_fillet,
+                groove_depth=groove_depth,
+                groove_clearance=tongue_clearance
+            )
+        else:
+            return Response("Part must be 'bottom' or 'lid'", status=400)
+
+        data = export_stl_bytes(solid)
+        fname = f"rugged_box_{part}.stl"
+        return send_file(BytesIO(data), as_attachment=True, download_name=fname, mimetype='application/sla')
+        
+    except Exception as e:
+        return Response(f"STL generation failed: {str(e)}", status=500)
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)

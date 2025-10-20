@@ -186,6 +186,9 @@
         </form>
         
         <div class="actions">
+            <form action="{{ url_for('model_generator') }}" style="display:inline;">
+                <button type="submit" class="btn btn-blue">🔧 Model Generator</button>
+            </form>
            
             {% if role == "manager" %}
             <!-- <div class="actions"> -->
