@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y \
     libx11-6 \
     libxrandr2 \
     libxss1 \
-    libgconf-2-4 \
     libasound2 \
     libxtst6 \
     libxcomposite1 \
@@ -32,7 +31,7 @@ RUN apt-get update && apt-get install -y \
     libxinerama1 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR ~/
+WORKDIR /app
 
 COPY ./requirements.txt .
 
@@ -40,5 +39,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD gunicorn --timeout 120 -w 4 -b 0.0.0.0:5000 app:app
+CMD ["gunicorn", "--timeout", "120", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
 
