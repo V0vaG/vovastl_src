@@ -11,7 +11,6 @@ ENV BRANCH=$BRANCH
 
 # Install system dependencies required for CadQuery
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
     libgl1-mesa-dri \
     libglib2.0-0 \
     libxrender1 \
@@ -29,7 +28,8 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxi6 \
     libxinerama1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libGL.so.1 /usr/lib/x86_64-linux-gnu/libGL.so.1 || true
 
 WORKDIR /app
 
