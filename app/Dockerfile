@@ -71,5 +71,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Set environment variables for headless OpenGL rendering
+ENV MESA_GL_VERSION_OVERRIDE=3.3
+ENV LIBGL_ALWAYS_SOFTWARE=1
+ENV MESA_GLSL_VERSION_OVERRIDE=330
+ENV GALLIUM_DRIVER=llvmpipe
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLX_stub.so
+
 CMD ["gunicorn", "--timeout", "120", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
 
